@@ -13,7 +13,19 @@ export type ComponentType =
   | "tabs_content"
   | "quote"
   | "steps"
-  | "comparison";
+  | "comparison"
+  | "rating"
+  | "quiz"
+  | "image_gallery"
+  | "key_value"
+  | "terminal"
+  | "flashcard"
+  | "color_palette"
+  | "poll"
+  | "rating_grid"
+  | "flow_diagram"
+  | "map_highlight"
+  | "document_view";
 
 // ── cards ────────────────────────────────────────────────────────────────────
 
@@ -22,6 +34,8 @@ export interface CardItem {
   body: string;
   badge?: string;
   icon?: string;
+  /** Optional markdown content shown in a modal on click */
+  details?: string;
 }
 
 // ── chart ────────────────────────────────────────────────────────────────────
@@ -105,12 +119,101 @@ export interface ComparisonSide {
   color?: "green" | "red" | "blue" | "neutral";
 }
 
+// ── rating ───────────────────────────────────────────────────────────────────
+
+export interface RatingItem {
+  label: string;
+  defaultScore: number;
+}
+
+// ── quiz ─────────────────────────────────────────────────────────────────────
+
+export interface QuizQuestion {
+  question: string;
+  options: string[];
+  correct: number;
+  explanation?: string;
+}
+
+// ── image_gallery ─────────────────────────────────────────────────────────────
+
+// image_gallery uses query + count, images fetched at runtime from Pexels
+
+// ── key_value ─────────────────────────────────────────────────────────────────
+
+export interface KeyValueEntry {
+  key: string;
+  value: string;
+  category?: string;
+}
+
+// ── terminal ─────────────────────────────────────────────────────────────────
+
+export interface TerminalLine {
+  prompt?: string;
+  command?: string;
+  output?: string;
+}
+
+// ── flashcard ────────────────────────────────────────────────────────────────
+
+export interface Flashcard {
+  front: string;
+  back: string;
+}
+
+// ── color_palette ─────────────────────────────────────────────────────────────
+
+export interface ColorSwatch {
+  name: string;
+  hex: string;
+  description?: string;
+}
+
+// ── poll ─────────────────────────────────────────────────────────────────────
+
+export interface PollOption {
+  label: string;
+  /** Seed value (0–100) shown when no one has voted yet */
+  initialPercent?: number;
+}
+
+// ── rating_grid ───────────────────────────────────────────────────────────────
+
+export interface RatingGridItem {
+  item: string;
+  scores: Record<string, number>;
+}
+
+// ── flow_diagram ──────────────────────────────────────────────────────────────
+
+export interface FlowNode {
+  id: string;
+  label: string;
+  x: number;
+  y: number;
+  shape?: "rect" | "diamond" | "circle";
+}
+
+export interface FlowEdge {
+  from: string;
+  to: string;
+  label?: string;
+}
+
+// ── map_highlight ─────────────────────────────────────────────────────────────
+
+export interface MapHighlightEntry {
+  country: string;
+  value?: string;
+}
+
 // ── ComponentDef ─────────────────────────────────────────────────────────────
 
 export interface ComponentDef {
   type: ComponentType;
 
-  // text
+  // text / document_view
   content?: string;
 
   // cards
@@ -157,6 +260,56 @@ export interface ComponentDef {
   // comparison
   leftSide?: ComparisonSide;
   rightSide?: ComparisonSide;
+
+  // rating
+  ratingTitle?: string;
+  ratingItems?: RatingItem[];
+
+  // quiz
+  questions?: QuizQuestion[];
+
+  // image_gallery
+  query?: string;
+  count?: number;
+  caption?: string;
+
+  // key_value
+  kvTitle?: string;
+  entries?: KeyValueEntry[];
+
+  // terminal
+  terminalTitle?: string;
+  lines?: TerminalLine[];
+
+  // flashcard
+  flashcardTitle?: string;
+  flashcards?: Flashcard[];
+
+  // color_palette
+  paletteTitle?: string;
+  swatches?: ColorSwatch[];
+
+  // poll
+  pollQuestion?: string;
+  options?: PollOption[];
+
+  // rating_grid
+  gridTitle?: string;
+  criteria?: string[];
+  gridItems?: RatingGridItem[];
+
+  // flow_diagram
+  flowTitle?: string;
+  nodes?: FlowNode[];
+  edges?: FlowEdge[];
+
+  // map_highlight
+  mapTitle?: string;
+  highlights?: MapHighlightEntry[];
+
+  // document_view — cover fields
+  docTitle?: string;
+  docSubtitle?: string;
 }
 
 // ── top-level response ────────────────────────────────────────────────────────

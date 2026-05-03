@@ -16,6 +16,18 @@ import TabsContent from "./TabsContent";
 import Quote from "./Quote";
 import Steps from "./Steps";
 import Comparison from "./Comparison";
+import Rating from "./Rating";
+import Quiz from "./Quiz";
+import ImageGallery from "./ImageGallery";
+import KeyValueList from "./KeyValueList";
+import TerminalBlock from "./TerminalBlock";
+import FlashcardDeck from "./FlashcardDeck";
+import ColorPalette from "./ColorPalette";
+import Poll from "./Poll";
+import RatingGrid from "./RatingGrid";
+import FlowDiagram from "./FlowDiagram";
+import MapHighlight from "./MapHighlight";
+import DocumentView from "./DocumentView";
 
 // Chart.js relies on browser APIs — load only on the client
 const ChartBlock = dynamic(() => import("./ChartBlock"), { ssr: false });
@@ -119,6 +131,85 @@ function renderComponent(component: ComponentDef, index: number): React.ReactNod
         />
       ) : null;
 
+    case "rating":
+      return component.ratingItems && component.ratingItems.length > 0 ? (
+        <Rating key={index} ratingTitle={component.ratingTitle} items={component.ratingItems} />
+      ) : null;
+
+    case "quiz":
+      return component.questions && component.questions.length > 0 ? (
+        <Quiz key={index} questions={component.questions} />
+      ) : null;
+
+    case "image_gallery":
+      return component.query ? (
+        <ImageGallery key={index} query={component.query} count={component.count} caption={component.caption} />
+      ) : null;
+
+    case "key_value":
+      return component.entries && component.entries.length > 0 ? (
+        <KeyValueList key={index} kvTitle={component.kvTitle} entries={component.entries} />
+      ) : null;
+
+    case "terminal":
+      return component.lines && component.lines.length > 0 ? (
+        <TerminalBlock key={index} terminalTitle={component.terminalTitle} lines={component.lines} />
+      ) : null;
+
+    case "flashcard":
+      return component.flashcards && component.flashcards.length > 0 ? (
+        <FlashcardDeck key={index} flashcardTitle={component.flashcardTitle} flashcards={component.flashcards} />
+      ) : null;
+
+    case "color_palette":
+      return component.swatches && component.swatches.length > 0 ? (
+        <ColorPalette key={index} paletteTitle={component.paletteTitle} swatches={component.swatches} />
+      ) : null;
+
+    case "poll":
+      return component.pollQuestion && component.options && component.options.length > 0 ? (
+        <Poll key={index} pollQuestion={component.pollQuestion} options={component.options} />
+      ) : null;
+
+    case "rating_grid":
+      return component.gridItems && component.criteria && component.gridItems.length > 0 ? (
+        <RatingGrid
+          key={index}
+          gridTitle={component.gridTitle}
+          criteria={component.criteria}
+          gridItems={component.gridItems}
+        />
+      ) : null;
+
+    case "flow_diagram":
+      return component.nodes && component.nodes.length > 0 ? (
+        <FlowDiagram
+          key={index}
+          flowTitle={component.flowTitle}
+          nodes={component.nodes}
+          edges={component.edges ?? []}
+        />
+      ) : null;
+
+    case "map_highlight":
+      return component.highlights && component.highlights.length > 0 ? (
+        <MapHighlight
+          key={index}
+          mapTitle={component.mapTitle}
+          highlights={component.highlights}
+        />
+      ) : null;
+
+    case "document_view":
+      return component.content ? (
+        <DocumentView
+          key={index}
+          docTitle={component.docTitle}
+          docSubtitle={component.docSubtitle}
+          content={component.content}
+        />
+      ) : null;
+
     default:
       return null;
   }
@@ -128,7 +219,10 @@ export default function AdaptiveContent({ response }: AdaptiveContentProps) {
   return (
     <div className="space-y-6 animate-fadeIn">
       {response.summary && (
-        <p className="text-slate-400 text-sm leading-relaxed border-l-2 border-violet-500/50 pl-3">
+        <p
+          className="text-slate-400 text-sm leading-relaxed border-l-2 pl-3"
+          style={{ borderColor: "var(--theme-500-60)" }}
+        >
           {response.summary}
         </p>
       )}

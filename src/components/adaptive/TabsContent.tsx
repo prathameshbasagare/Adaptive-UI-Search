@@ -12,30 +12,27 @@ interface TabsContentProps {
 
 export default function TabsContent({ tabs }: TabsContentProps) {
   const [activeIndex, setActiveIndex] = useState(0);
-  const activeTab = tabs[activeIndex];
 
   return (
     <div className="bg-slate-800/40 border border-slate-700 rounded-xl overflow-hidden">
-      {/* Tab bar */}
       <div className="flex overflow-x-auto border-b border-slate-700 bg-slate-900/40">
         {tabs.map((tab, index) => (
           <button
             key={index}
             onClick={() => setActiveIndex(index)}
-            className={`shrink-0 px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
+            className="shrink-0 px-4 py-3 text-sm font-medium transition-colors border-b-2"
+            style={
               index === activeIndex
-                ? "text-violet-300 border-violet-500 bg-slate-800/60"
-                : "text-slate-400 hover:text-slate-200 border-transparent hover:border-slate-600"
-            }`}
+                ? { color: "var(--theme-400)", borderColor: "var(--theme-500)", backgroundColor: "rgba(255,255,255,0.03)" }
+                : { color: "#94a3b8", borderColor: "transparent" }
+            }
           >
             {tab.label}
           </button>
         ))}
       </div>
-
-      {/* Tab content */}
       <div className="p-5">
-        {activeTab && <TextBlock content={activeTab.content} />}
+        {tabs[activeIndex] && <TextBlock content={tabs[activeIndex].content} />}
       </div>
     </div>
   );

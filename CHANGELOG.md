@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **User-controlled 6-theme color system** via CSS custom properties (`--theme-400/500/600` + alpha variants); themes: `violet` (default), `blue`, `emerald`, `amber`, `rose`, `cyan`
+- `src/hooks/useThemeStore.ts` — Zustand store persisting selected theme to `localStorage` and syncing `data-theme` attribute on `<body>`
+- `src/components/ui/ThemePicker.tsx` — 6 colored circle buttons in the app header for instant theme switching
+- **Global modal system**: `src/contexts/ModalContext.tsx` with `ModalProvider`, `useModal()` hook, and `ModalOverlay` (Escape/backdrop close, slide-in animation)
+- **Interactive expandable cards**: `CardItem.details` field — cards with details show an expand icon; clicking opens a modal with full markdown content; hover shows 100-char preview
+- **`Rating` component** — star rating rows (1–5) for a list of items; in-component state, no persistence
+- **`Quiz` component** — multi-question quiz with option selection, correct/wrong highlight, explanation reveal, score summary, and retry
+- **`ImageGallery` component** (`image_gallery` type) — fetches from `/api/images` (Pexels), renders masonry grid with photographer credit and skeleton loader
+- `src/app/api/images/route.ts` — GET route proxying Pexels API with `?query=<str>&count=<n>` parameters
+- **`KeyValueList` component** (`key_value` type) — spec-sheet style key:value pairs with optional category grouping
+- **`TerminalBlock` component** (`terminal` type) — dark terminal window with typewriter animation per command line
+- **`FlashcardDeck` component** (`flashcard` type) — CSS 3D flip cards with front/back, next/prev navigation, and reset
+- **`ColorPalette` component** (`color_palette` type) — color swatches grid with hex copy-to-clipboard
+- **`Poll` component** (`poll` type) — single-vote poll with animated result bars after voting
+- **`RatingGrid` component** (`rating_grid` type) — items × criteria matrix with fill-bar scores and average column
+- **`FlowDiagram` component** (`flow_diagram` type) — custom SVG renderer for nodes (rect/diamond/circle) + directed edges
+- **`MapHighlight` component** (`map_highlight` type) — SVG world map with highlighted countries via `react-simple-maps` + graceful list fallback
+- **`DocumentView` component** (`document_view` type) — page-like styled document with decorative cover header, title, subtitle, and full markdown body
+- `pexels` npm package for typed Pexels API client
+- `react-simple-maps` for `MapHighlight` SVG world map
+- CSS `@keyframes` for `cursor-blink` (terminal cursor) added to `globals.css`
+- CSS classes for flashcard 3D perspective/flip in `globals.css`
+- `PEXELS_API_KEY` added to `.env.local.example`
+
+### Changed
+- Upgraded model from `gemma-3-1b-it` → `gemma-3-4b-it` → `gemma-3-12b-it` — 12B has the strongest instruction following in the Gemma 3 family for reliable structured JSON output
+- **All 13 existing components** refactored from hardcoded `violet-*` Tailwind colors to `var(--theme-*)` CSS custom properties
+- **`Comparison` component** — auto-detects pros/cons context; only uses green/red for pros vs cons; all other comparisons (React vs Vue, iOS vs Android, etc.) use theme-neutral colors
+- **`FloatingChatButton`** — updated to use theme color for background and glow; added message-count dot indicator
+- **`app/app/page.tsx`** — added `ThemePicker` in header, wrapped in `ModalProvider`, tab/accent colors now use CSS vars
+- **`AdaptiveContent`** — summary border uses `var(--theme-500-60)`; added 12 new component cases
+- Extended `src/lib/types.ts` with 12 new `ComponentType` values and interfaces: `RatingItem`, `QuizQuestion`, `KeyValueEntry`, `TerminalLine`, `Flashcard`, `ColorSwatch`, `PollOption`, `RatingGridItem`, `FlowNode`, `FlowEdge`, `MapHighlightEntry`; added `details?: string` to `CardItem`
+- Extended system prompt in `src/lib/gemini.ts` with all 25 component schemas and updated selection rules (including comparison color semantics, new types)
+
 ### Changed
 - Upgraded model from `gemma-3-1b-it` → `gemma-3-4b-it` → `gemma-3-27b-it` — 27B has the strongest instruction following in the Gemma 3 family for reliable structured JSON output
 - Rewrote system prompt using concrete JSON examples per component type and explicit SELECTION RULES mapping query patterns (e.g. "compare X vs Y" → comparison, "history of" → timeline) — improves model adherence to schema for smaller models

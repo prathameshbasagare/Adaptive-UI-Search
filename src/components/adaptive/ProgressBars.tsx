@@ -10,26 +10,8 @@ interface ProgressBarsProps {
   items: ProgressItem[];
 }
 
-const BAR_COLORS = [
-  "bg-violet-500",
-  "bg-blue-500",
-  "bg-emerald-500",
-  "bg-amber-500",
-  "bg-pink-500",
-  "bg-cyan-500",
-];
-
-function ProgressBar({
-  item,
-  colorClass,
-  animate,
-}: {
-  item: ProgressItem;
-  colorClass: string;
-  animate: boolean;
-}) {
+function ProgressBar({ item, animate, index }: { item: ProgressItem; animate: boolean; index: number }) {
   const clamped = Math.min(100, Math.max(0, item.value));
-
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between text-sm">
@@ -38,8 +20,12 @@ function ProgressBar({
       </div>
       <div className="h-2.5 bg-slate-800 rounded-full overflow-hidden border border-slate-700/60">
         <div
-          className={`h-full rounded-full transition-all duration-700 ease-out ${colorClass}`}
-          style={{ width: animate ? `${clamped}%` : "0%" }}
+          className="h-full rounded-full transition-all duration-700 ease-out"
+          style={{
+            width: animate ? `${clamped}%` : "0%",
+            background: `linear-gradient(to right, var(--theme-600), var(--theme-400))`,
+            transitionDelay: `${index * 80}ms`,
+          }}
         />
       </div>
     </div>
@@ -50,7 +36,6 @@ export default function ProgressBars({ progressTitle, items }: ProgressBarsProps
   const [animate, setAnimate] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  // Trigger fill animation when component enters viewport
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -64,16 +49,9 @@ export default function ProgressBars({ progressTitle, items }: ProgressBarsProps
 
   return (
     <div ref={ref} className="bg-slate-800/40 border border-slate-700 rounded-xl p-5 space-y-4">
-      {progressTitle && (
-        <h3 className="font-semibold text-white text-sm">{progressTitle}</h3>
-      )}
+      {progressTitle && <h3 className="font-semibold text-white text-sm">{progressTitle}</h3>}
       {items.map((item, index) => (
-        <ProgressBar
-          key={index}
-          item={item}
-          colorClass={BAR_COLORS[index % BAR_COLORS.length]}
-          animate={animate}
-        />
+        <ProgressBar key={index} item={item} animate={animate} index={index} />
       ))}
     </div>
   );

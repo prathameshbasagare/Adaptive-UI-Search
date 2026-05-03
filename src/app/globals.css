@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+/* ── Base ──────────────────────────────────────────────────────────────────── */
+
 :root {
   --background: #020617;
   --foreground: #f1f5f9;
@@ -18,51 +20,149 @@ body {
   font-family: var(--font-geist-sans), system-ui, sans-serif;
 }
 
-/* Fade-in animation for adaptive content */
+/* ── Theme CSS custom properties ───────────────────────────────────────────── */
+/* Each theme exposes --theme-{shade} and --theme-{shade}-{alpha} vars       */
+
+body, body[data-theme="violet"] {
+  --theme-400: #a78bfa;
+  --theme-500: #8b5cf6;
+  --theme-600: #7c3aed;
+  --theme-500-8:  rgba(139, 92, 246, 0.08);
+  --theme-500-10: rgba(139, 92, 246, 0.10);
+  --theme-500-20: rgba(139, 92, 246, 0.20);
+  --theme-500-30: rgba(139, 92, 246, 0.30);
+  --theme-500-40: rgba(139, 92, 246, 0.40);
+  --theme-500-60: rgba(139, 92, 246, 0.60);
+  --theme-name: "violet";
+}
+
+body[data-theme="blue"] {
+  --theme-400: #60a5fa;
+  --theme-500: #3b82f6;
+  --theme-600: #2563eb;
+  --theme-500-8:  rgba(59, 130, 246, 0.08);
+  --theme-500-10: rgba(59, 130, 246, 0.10);
+  --theme-500-20: rgba(59, 130, 246, 0.20);
+  --theme-500-30: rgba(59, 130, 246, 0.30);
+  --theme-500-40: rgba(59, 130, 246, 0.40);
+  --theme-500-60: rgba(59, 130, 246, 0.60);
+  --theme-name: "blue";
+}
+
+body[data-theme="emerald"] {
+  --theme-400: #34d399;
+  --theme-500: #10b981;
+  --theme-600: #059669;
+  --theme-500-8:  rgba(16, 185, 129, 0.08);
+  --theme-500-10: rgba(16, 185, 129, 0.10);
+  --theme-500-20: rgba(16, 185, 129, 0.20);
+  --theme-500-30: rgba(16, 185, 129, 0.30);
+  --theme-500-40: rgba(16, 185, 129, 0.40);
+  --theme-500-60: rgba(16, 185, 129, 0.60);
+  --theme-name: "emerald";
+}
+
+body[data-theme="amber"] {
+  --theme-400: #fbbf24;
+  --theme-500: #f59e0b;
+  --theme-600: #d97706;
+  --theme-500-8:  rgba(245, 158, 11, 0.08);
+  --theme-500-10: rgba(245, 158, 11, 0.10);
+  --theme-500-20: rgba(245, 158, 11, 0.20);
+  --theme-500-30: rgba(245, 158, 11, 0.30);
+  --theme-500-40: rgba(245, 158, 11, 0.40);
+  --theme-500-60: rgba(245, 158, 11, 0.60);
+  --theme-name: "amber";
+}
+
+body[data-theme="rose"] {
+  --theme-400: #fb7185;
+  --theme-500: #f43f5e;
+  --theme-600: #e11d48;
+  --theme-500-8:  rgba(244, 63, 94, 0.08);
+  --theme-500-10: rgba(244, 63, 94, 0.10);
+  --theme-500-20: rgba(244, 63, 94, 0.20);
+  --theme-500-30: rgba(244, 63, 94, 0.30);
+  --theme-500-40: rgba(244, 63, 94, 0.40);
+  --theme-500-60: rgba(244, 63, 94, 0.60);
+  --theme-name: "rose";
+}
+
+body[data-theme="cyan"] {
+  --theme-400: #22d3ee;
+  --theme-500: #06b6d4;
+  --theme-600: #0891b2;
+  --theme-500-8:  rgba(6, 182, 212, 0.08);
+  --theme-500-10: rgba(6, 182, 212, 0.10);
+  --theme-500-20: rgba(6, 182, 212, 0.20);
+  --theme-500-30: rgba(6, 182, 212, 0.30);
+  --theme-500-40: rgba(6, 182, 212, 0.40);
+  --theme-500-60: rgba(6, 182, 212, 0.60);
+  --theme-name: "cyan";
+}
+
+/* ── Fade-in animation ─────────────────────────────────────────────────────── */
+
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .animate-fadeIn {
   animation: fadeIn 0.35s ease-out forwards;
 }
 
-/* Thin custom scrollbar */
-.scrollbar-thin {
-  scrollbar-width: thin;
+/* ── Thin custom scrollbar ─────────────────────────────────────────────────── */
+
+.scrollbar-thin { scrollbar-width: thin; }
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background-color: #334155; border-radius: 4px; }
+
+/* ── Typewriter cursor ─────────────────────────────────────────────────────── */
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
 }
 
-.scrollbar-thumb-slate-700::-webkit-scrollbar-thumb {
-  background-color: #334155;
-  border-radius: 4px;
+.cursor-blink {
+  animation: blink 1s step-end infinite;
 }
 
-.scrollbar-thumb-slate-600::-webkit-scrollbar-thumb {
-  background-color: #475569;
-  border-radius: 4px;
+/* ── Flashcard 3D flip ─────────────────────────────────────────────────────── */
+
+.flashcard-scene {
+  perspective: 800px;
 }
 
-.scrollbar-track-transparent::-webkit-scrollbar-track {
-  background: transparent;
+.flashcard-card {
+  transition: transform 0.5s ease;
+  transform-style: preserve-3d;
+  position: relative;
 }
 
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+.flashcard-card.flipped {
+  transform: rotateY(180deg);
 }
 
-::-webkit-scrollbar-track {
-  background: transparent;
+.flashcard-face {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
-::-webkit-scrollbar-thumb {
-  background-color: #334155;
-  border-radius: 4px;
+.flashcard-back {
+  transform: rotateY(180deg);
+  position: absolute;
+  inset: 0;
+}
+
+/* ── Flow diagram SVG arrows ───────────────────────────────────────────────── */
+
+.flow-edge {
+  stroke: var(--theme-500-60);
+  stroke-width: 1.5;
+  fill: none;
+  marker-end: url(#arrowhead);
 }

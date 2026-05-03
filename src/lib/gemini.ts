@@ -3,12 +3,15 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { AdaptiveUIResponse } from "./types";
 
-const MODEL = "gemma-3-27b-it";
+const MODEL = "gemma-3-12b-it";
 
 const ALL_TYPES = [
   "text", "cards", "chart", "code",
   "timeline", "table", "stat_cards", "progress",
   "accordion", "tabs_content", "quote", "steps", "comparison",
+  "rating", "quiz", "image_gallery", "key_value", "terminal",
+  "flashcard", "color_palette", "poll", "rating_grid",
+  "flow_diagram", "map_highlight", "document_view",
 ];
 
 const SYSTEM_PROMPT = `You are a JSON API. Respond ONLY with a valid JSON object. No prose. No markdown fences. No explanation.
@@ -16,11 +19,11 @@ const SYSTEM_PROMPT = `You are a JSON API. Respond ONLY with a valid JSON object
 REQUIRED OUTPUT FORMAT:
 {"tabTitle":"<max 30 chars>","summary":"<one sentence>","components":[...]}
 
-COMPONENT TYPES — use the most appropriate ones for the request:
+COMPONENT TYPES — pick the most appropriate ones for the request:
 
 {"type":"text","content":"<markdown text>"}
 
-{"type":"cards","cards":[{"title":"<str>","body":"<str>","badge":"<optional str>","icon":"<optional emoji>"}]}
+{"type":"cards","cards":[{"title":"<str>","body":"<str>","badge":"<optional str>","icon":"<optional emoji>","details":"<optional expanded markdown>"}]}
 
 {"type":"chart","chartType":"bar","chartTitle":"<str>","chartData":{"labels":["A","B"],"datasets":[{"label":"<str>","data":[10,20]}]}}
 
@@ -46,17 +49,56 @@ quoteType options: tip | warning | info | success | quote
 
 {"type":"comparison","leftSide":{"title":"Pros","items":["Fast","Easy"],"color":"green"},"rightSide":{"title":"Cons","items":["Complex","Heavy"],"color":"red"}}
 color options: green | red | blue | neutral
+RULE: Only use color green/red for Pros vs Cons. For React vs Vue or similar neutral comparisons, use color "blue"/"neutral".
+
+{"type":"rating","ratingTitle":"Rate these","ratingItems":[{"label":"React","defaultScore":4},{"label":"Vue","defaultScore":3}]}
+
+{"type":"quiz","questions":[{"question":"<str>","options":["A","B","C","D"],"correct":1,"explanation":"<optional>"}]}
+
+{"type":"image_gallery","query":"mountain landscape","count":6,"caption":"<optional>"}
+
+{"type":"key_value","kvTitle":"<optional str>","entries":[{"key":"Language","value":"Python","category":"<optional group>"}]}
+
+{"type":"terminal","terminalTitle":"setup.sh","lines":[{"prompt":"$","command":"npm install","output":"added 100 packages"},{"prompt":"$","command":"npm run dev"}]}
+
+{"type":"flashcard","flashcardTitle":"<optional>","flashcards":[{"front":"What is React?","back":"A JavaScript UI library"}]}
+
+{"type":"color_palette","paletteTitle":"<optional>","swatches":[{"name":"Primary","hex":"#6366f1","description":"<optional>"}]}
+
+{"type":"poll","pollQuestion":"<str>","options":[{"label":"Option A","initialPercent":30},{"label":"Option B","initialPercent":70}]}
+
+{"type":"rating_grid","gridTitle":"<optional>","criteria":["Speed","Ease","Power"],"gridItems":[{"item":"React","scores":{"Speed":8,"Ease":7,"Power":9}}]}
+
+{"type":"flow_diagram","flowTitle":"<optional>","nodes":[{"id":"a","label":"Start","x":30,"y":30,"shape":"circle"},{"id":"b","label":"Process","x":30,"y":120,"shape":"rect"}],"edges":[{"from":"a","to":"b","label":"<optional>"}]}
+shape options: rect | diamond | circle
+
+{"type":"map_highlight","mapTitle":"<optional>","highlights":[{"country":"France","value":"<optional note>"},{"country":"Japan","value":"<optional note>"}]}
+
+{"type":"document_view","docTitle":"<str>","docSubtitle":"<optional>","content":"<markdown body>"}
 
 SELECTION RULES — FOLLOW EXACTLY:
-- "compare X vs Y" or "pros and cons" → USE comparison + text (NOT cards)
-- "history of" or "timeline of" → USE timeline + text (NOT cards)
-- "how to" or "steps to" or "tutorial" → USE steps + quote(tip)
-- "FAQ" or "questions about" → USE accordion + text
-- "statistics" or "metrics" or "numbers" → USE stat_cards + chart
-- "difference between" in a table → USE table + text
+- "compare X vs Y" neutral → USE comparison(blue/neutral) + text
+- "pros and cons" / "advantages and disadvantages" → USE comparison(green/red)
+- "history of" / "timeline of" → USE timeline + text
+- "how to" / "steps to" / "tutorial" / "guide" → USE steps + quote(tip)
+- "FAQ" / "questions about" → USE accordion + text
+- "statistics" / "metrics" / "numbers" / "data" → USE stat_cards + chart
+- "difference between" structured → USE table + text
 - "code in multiple languages" → USE code(snippets) + text
-- "features" or "options" or "tools" → USE cards + text
-- "skill levels" or "rankings" → USE progress + text
+- "features" / "options" / "tools" / "list of" → USE cards + text
+- "skill levels" / "rankings" / "proficiency" → USE progress + text
+- "quiz" / "test my knowledge" → USE quiz
+- "rate" / "rating" → USE rating
+- "images" / "photos" / "gallery" → USE image_gallery
+- "install" / "setup commands" / "terminal" → USE terminal + steps
+- "flashcards" / "study cards" → USE flashcard
+- "color" / "palette" / "theme colors" → USE color_palette
+- "vote" / "poll" / "which is better" → USE poll
+- "compare multiple criteria" → USE rating_grid
+- "flow" / "diagram" / "process flow" → USE flow_diagram
+- "countries" / "map" / "world" → USE map_highlight
+- "document" / "report" / "article" → USE document_view
+- "specs" / "specifications" / "properties" → USE key_value
 - general explanation → USE text
 
 ALWAYS return 2 or more components. Output ONLY the JSON. Nothing else.`;
@@ -71,8 +113,8 @@ function getGeminiClient(): GoogleGenerativeAI {
 
 /*
  * Repairs common structural mistakes small models make.
- * Gemma 3 1B tends to place card/step/event items directly in `components`
- * without the wrapping type envelope. We detect and fix these orphan items.
+ * Detects orphan component items placed directly in `components` array
+ * and wraps them into their correct type envelopes.
  */
 function repairComponents(components: unknown[]): unknown[] {
   const repaired: unknown[] = [];
@@ -108,17 +150,15 @@ function repairComponents(components: unknown[]): unknown[] {
       flush();
       repaired.push(comp);
     } else if (typeof comp.title === "string" && typeof comp.body === "string") {
-      // Orphan card item
       orphanCards.push(comp);
     } else if (typeof comp.title === "string" && typeof comp.description === "string") {
-      // Orphan timeline event or step — disambiguate by presence of "year"
+      // Disambiguate timeline event vs step by presence of "year"
       if ("year" in comp) {
         orphanEvents.push(comp);
       } else {
         orphanSteps.push(comp);
       }
     } else if (typeof comp.label === "string" && typeof comp.value === "string") {
-      // Orphan stat card
       orphanStats.push(comp);
     } else if (typeof comp.content === "string") {
       flush();
