@@ -24,10 +24,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`Poll` component** (`poll` type) — single-vote poll with animated result bars after voting
 - **`RatingGrid` component** (`rating_grid` type) — items × criteria matrix with fill-bar scores and average column
 - **`FlowDiagram` component** (`flow_diagram` type) — custom SVG renderer for nodes (rect/diamond/circle) + directed edges
-- **`MapHighlight` component** (`map_highlight` type) — SVG world map with highlighted countries via `react-simple-maps` + graceful list fallback
+- **`MapHighlight` component** (`map_highlight` type) — React-19-compatible stylized world banner + highlighted country chips (no external React map dependency)
 - **`DocumentView` component** (`document_view` type) — page-like styled document with decorative cover header, title, subtitle, and full markdown body
 - `pexels` npm package for typed Pexels API client
-- `react-simple-maps` for `MapHighlight` SVG world map
 - CSS `@keyframes` for `cursor-blink` (terminal cursor) added to `globals.css`
 - CSS classes for flashcard 3D perspective/flip in `globals.css`
 - `PEXELS_API_KEY` added to `.env.local.example`

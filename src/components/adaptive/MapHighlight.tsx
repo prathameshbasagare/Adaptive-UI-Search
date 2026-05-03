@@ -2,7 +2,6 @@
 
 "use client";
 
-import { useState } from "react";
 import type { MapHighlightEntry } from "@/lib/types";
 
 interface MapHighlightProps {
@@ -10,54 +9,14 @@ interface MapHighlightProps {
   highlights: MapHighlightEntry[];
 }
 
-/*
- * Lightweight SVG world map using react-simple-maps.
- * Falls back gracefully to a list if the library isn't loaded.
- */
 export default function MapHighlight({ mapTitle, highlights }: MapHighlightProps) {
-  // Dynamically import react-simple-maps only on client
-  const [MapComponents, setMapComponents] = useState<null | {
-    ComposableMap: React.ComponentType<React.SVGProps<SVGSVGElement> & { projectionConfig?: Record<string, unknown> }>;
-    Geographies: React.ComponentType<{ geography: string; children: (props: { geographies: Array<{ rsmKey: string; properties: { ISO_A3: string; NAME: string } }> }) => React.ReactNode }>;
-    Geography: React.ComponentType<{ geography: unknown; fill?: string; stroke?: string; strokeWidth?: number; style?: { default?: React.CSSProperties; hover?: React.CSSProperties; pressed?: React.CSSProperties } }>;
-  }>(null);
-
-  // We import dynamically to avoid SSR issues
-  if (typeof window !== "undefined" && !MapComponents) {
-    import("react-simple-maps")
-      .then((m) => setMapComponents(m as unknown as typeof MapComponents))
-      .catch(() => null);
-  }
-
-  const countrySet = new Map(highlights.map((h) => [h.country.toLowerCase(), h.value]));
-
-  const GEO_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
-
-  if (!MapComponents) {
-    // Skeleton / fallback list while the lib loads
-    return (
-      <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-5 space-y-3">
-        {mapTitle && <h3 className="font-semibold text-white text-sm">{mapTitle}</h3>}
-        <ul className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-          {highlights.map((h, i) => (
-            <li
-              key={i}
-              className="flex items-center gap-2 text-sm text-slate-300 bg-slate-800/60 rounded-lg px-3 py-2"
-            >
-              <span
-                className="w-2.5 h-2.5 rounded-full shrink-0"
-                style={{ backgroundColor: "var(--theme-500)" }}
-              />
-              <span className="truncate">{h.country}</span>
-              {h.value && <span className="ml-auto text-xs text-slate-500 shrink-0">{h.value}</span>}
-            </li>
-          ))}
-        </ul>
-      </div>
-    );
-  }
-
-  const { ComposableMap, Geographies, Geography } = MapComponents;
+  const normalized = highlights
+    .map((h) => ({
+      country: h.country,
+      value: h.value,
+      key: h.country.trim().toLowerCase(),
+    }))
+    .filter((h) => h.key.length > 0);
 
   return (
     <div className="bg-slate-900/60 border border-slate-700 rounded-xl overflow-hidden">
@@ -69,38 +28,45 @@ export default function MapHighlight({ mapTitle, highlights }: MapHighlightProps
           {mapTitle}
         </div>
       )}
-      <div className="p-2">
-        <ComposableMap projectionConfig={{ scale: 145 }} style={{ width: "100%", height: "auto" }}>
-          <Geographies geography={GEO_URL}>
-            {({ geographies }) =>
-              geographies.map((geo) => {
-                const name = geo.properties.NAME?.toLowerCase() ?? "";
-                const iso = geo.properties.ISO_A3?.toLowerCase() ?? "";
-                const isHighlighted = countrySet.has(name) || countrySet.has(iso);
-                return (
-                  <Geography
-                    key={geo.rsmKey}
-                    geography={geo}
-                    fill={isHighlighted ? "var(--theme-500)" : "#1e293b"}
-                    stroke="#0f172a"
-                    strokeWidth={0.5}
-                    style={{
-                      default: { outline: "none" },
-                      hover: { fill: isHighlighted ? "var(--theme-400)" : "#334155", outline: "none" },
-                      pressed: { outline: "none" },
-                    }}
-                  />
-                );
-              })
-            }
-          </Geographies>
-        </ComposableMap>
+
+      {/* Stylized world banner (no external map dependency) */}
+      <div className="px-5 pt-5">
+        <div className="relative overflow-hidden rounded-xl border border-slate-700 bg-slate-950">
+          <div
+            className="absolute inset-0 opacity-40"
+            style={{
+              background:
+                "radial-gradient(circle at 20% 30%, var(--theme-500-20), transparent 55%), radial-gradient(circle at 70% 55%, var(--theme-500-10), transparent 60%)",
+            }}
+          />
+          <svg viewBox="0 0 800 200" className="relative w-full h-auto block">
+            {/* Abstract continent blobs */}
+            <path d="M80 120 C110 70, 170 55, 210 80 C250 105, 260 150, 220 165 C170 185, 120 170, 80 120 Z" fill="#1e293b" />
+            <path d="M260 70 C300 35, 360 35, 395 65 C425 92, 430 135, 400 155 C365 178, 305 170, 280 135 C255 100, 240 95, 260 70 Z" fill="#1e293b" />
+            <path d="M470 95 C500 55, 565 50, 605 80 C650 115, 645 165, 605 175 C560 188, 510 168, 485 140 C460 115, 450 120, 470 95 Z" fill="#1e293b" />
+            <path d="M650 105 C680 80, 725 90, 745 120 C765 150, 740 180, 705 178 C675 176, 635 130, 650 105 Z" fill="#1e293b" />
+
+            {/* Highlight dots */}
+            {normalized.slice(0, 10).map((h, i) => (
+              <circle
+                key={h.key}
+                cx={120 + (i * 58) % 640}
+                cy={70 + ((i * 37) % 90)}
+                r={6}
+                fill="var(--theme-500)"
+                opacity={0.9}
+              />
+            ))}
+          </svg>
+        </div>
       </div>
-      {highlights.length > 0 && (
-        <div className="px-5 pb-4 flex flex-wrap gap-2">
-          {highlights.map((h, i) => (
+
+      {/* Country chips */}
+      {normalized.length > 0 && (
+        <div className="px-5 py-4 flex flex-wrap gap-2">
+          {normalized.map((h, i) => (
             <span
-              key={i}
+              key={`${h.key}-${i}`}
               className="inline-flex items-center gap-1.5 text-xs text-slate-300 px-2.5 py-1 rounded-full border"
               style={{ backgroundColor: "var(--theme-500-10)", borderColor: "var(--theme-500-20)" }}
             >
