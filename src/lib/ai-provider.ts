@@ -20,8 +20,8 @@ interface ModelConfig {
 
 const MODEL_REGISTRY: ModelConfig[] = [
   // ── Tier 1: Flagship models ──
-  { id: "gemini-2.5-flash",              provider: "gemini",     contextWindow: 1_048_576, maxOutput: 65_535 },
   { id: "openrouter/owl-alpha",          provider: "openrouter", routerId: "openrouter/owl-alpha",             contextWindow: 128_000, maxOutput: 8_192 },
+  { id: "gemini-2.5-flash",              provider: "gemini",     contextWindow: 1_048_576, maxOutput: 65_535 },
   { id: "gemma-4-31b-it",               provider: "gemini",     contextWindow: 256_000,   maxOutput: 8_192 },
   { id: "gemma-4-26b-a4b-it",           provider: "gemini",     contextWindow: 256_000,   maxOutput: 8_192 },
 
