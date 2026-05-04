@@ -20,20 +20,20 @@ interface ModelConfig {
 
 const MODEL_REGISTRY: ModelConfig[] = [
   // ── Tier 1: Flagship models ──
-  { id: "openrouter/owl-alpha",          provider: "openrouter", routerId: "openrouter/owl-alpha",             contextWindow: 128_000, maxOutput: 8_192 },
-  { id: "gemini-2.5-flash",              provider: "gemini",     contextWindow: 1_048_576, maxOutput: 65_535 },
-  { id: "gemma-4-31b-it",               provider: "gemini",     contextWindow: 256_000,   maxOutput: 8_192 },
-  { id: "gemma-4-26b-a4b-it",           provider: "gemini",     contextWindow: 256_000,   maxOutput: 8_192 },
+  { id: "openrouter/owl-alpha", provider: "openrouter", routerId: "openrouter/owl-alpha", contextWindow: 128_000, maxOutput: 8_192 },
+  { id: "gemini-2.5-flash", provider: "gemini", contextWindow: 1_048_576, maxOutput: 65_535 },
+  { id: "gemma-4-31b-it", provider: "gemini", contextWindow: 256_000, maxOutput: 8_192 },
+  { id: "gemma-4-26b-a4b-it", provider: "gemini", contextWindow: 256_000, maxOutput: 8_192 },
 
   // ── Tier 2: Strong free models ──
-  { id: "gemma-4-31b-it-or",            provider: "openrouter", routerId: "google/gemma-4-31b-it:free",       contextWindow: 128_000, maxOutput: 8_192 },
-  { id: "gemma-3-27b-it",               provider: "gemini",     contextWindow: 128_000,   maxOutput: 8_192 },
-  { id: "nemotron-3-super",             provider: "openrouter", routerId: "nvidia/nemotron-3-super:free",     contextWindow: 32_000,  maxOutput: 8_192 },
+  { id: "gemma-4-31b-it-or", provider: "openrouter", routerId: "google/gemma-4-31b-it:free", contextWindow: 128_000, maxOutput: 8_192 },
+  { id: "gemma-3-27b-it", provider: "gemini", contextWindow: 128_000, maxOutput: 8_192 },
+  { id: "nemotron-3-super", provider: "openrouter", routerId: "nvidia/nemotron-3-super:free", contextWindow: 32_000, maxOutput: 8_192 },
 
   // ── Tier 3: Lite / smaller models ──
-  { id: "gemini-3.1-flash-lite-preview", provider: "gemini",    contextWindow: 1_048_576, maxOutput: 65_535 },
-  { id: "gemini-2.5-flash-lite",         provider: "gemini",    contextWindow: 1_048_576, maxOutput: 65_535 },
-  { id: "gemma-3-12b-it",               provider: "gemini",     contextWindow: 128_000,   maxOutput: 8_192 },
+  { id: "gemini-3.1-flash-lite-preview", provider: "gemini", contextWindow: 1_048_576, maxOutput: 65_535 },
+  { id: "gemini-2.5-flash-lite", provider: "gemini", contextWindow: 1_048_576, maxOutput: 65_535 },
+  { id: "gemma-3-12b-it", provider: "gemini", contextWindow: 128_000, maxOutput: 8_192 },
 ];
 
 /** Maximum number of models to try before giving up */
@@ -52,93 +52,74 @@ const ALL_TYPES = [
 
 const SYSTEM_PROMPT = `You are a JSON API. Respond ONLY with a valid JSON object. No prose. No markdown fences. No explanation.
 
+CRITICAL JSON RULES:
+- Properly escape all special characters inside string values.
+- Use \\n for newlines and \\" for nested quotes to prevent JSON.parse() crashes.
+
+CRITICAL CONTENT RULES:
+- BE EXHAUSTIVE AND HIGHLY DETAILED. Do not give brief summaries. 
+- Markdown text should be in-depth and comprehensive.
+- Cards, steps, and timeline descriptions must contain rich, multi-sentence details.
+- Build a visually rich page. ALWAYS mix text blocks with visual/data components (charts, tables, cards, code, stats).
+
 REQUIRED OUTPUT FORMAT:
-{"tabTitle":"<max 30 chars>","summary":"<one sentence>","components":[...]}
+{"_thought":"<brief reasoning about intent & component selection BEFORE outputting components>","tabTitle":"<max 30 chars>","summary":"<one sentence>","components":[...]}
 
-COMPONENT TYPES — pick the most appropriate ones for the request:
+COMPONENT TYPES (compact schema):
 
-{"type":"text","content":"<markdown text>"}
-
-{"type":"cards","cards":[{"title":"<str>","body":"<str>","badge":"<optional str>","icon":"<optional emoji>","details":"<optional expanded markdown>"}]}
-
+{"type":"text","content":"<markdown>"}
+{"type":"cards","cards":[{"title":"<str>","body":"<str>","badge":"<opt str>","icon":"<opt emoji>","details":"<opt markdown>"}]}
 {"type":"chart","chartType":"bar","chartTitle":"<str>","chartData":{"labels":["A","B"],"datasets":[{"label":"<str>","data":[10,20]}]}}
-
-{"type":"code","language":"python","code":"print('hello')"}
-{"type":"code","snippets":[{"language":"javascript","label":"JS","code":"console.log('hi')"},{"language":"python","label":"Python","code":"print('hi')"}]}
-
+{"type":"code","language":"python","code":"print('hi')"}
+{"type":"code","snippets":[{"language":"js","label":"JS","code":"console.log('hi')"}]}
 {"type":"timeline","events":[{"year":"2020","title":"<str>","description":"<str>","icon":"<emoji>"}]}
-
-{"type":"table","tableHeaders":["Col1","Col2"],"tableRows":[["val1","val2"],["val3","val4"]]}
-
+{"type":"table","tableHeaders":["Col1"],"tableRows":[["val1"]]}
 {"type":"stat_cards","stats":[{"label":"Users","value":"1.2M","trend":"+12%","trendDirection":"up","icon":"👥"}]}
-
-{"type":"progress","progressTitle":"<str>","items":[{"label":"React","value":85},{"label":"Vue","value":70}]}
-
+{"type":"progress","progressTitle":"<str>","items":[{"label":"React","value":85}]}
 {"type":"accordion","accordionItems":[{"question":"<str>","answer":"<str>"}]}
-
-{"type":"tabs_content","tabs":[{"label":"Overview","content":"<markdown>"},{"label":"Details","content":"<markdown>"}]}
-
-{"type":"quote","quoteType":"tip","content":"<str>","author":"<optional str>"}
-quoteType options: tip | warning | info | success | quote
-
-{"type":"steps","steps":[{"title":"Step 1","description":"<str>","code":"npm install","language":"bash"}]}
-
-{"type":"comparison","leftSide":{"title":"Pros","items":["Fast","Easy"],"color":"green"},"rightSide":{"title":"Cons","items":["Complex","Heavy"],"color":"red"}}
-color options: green | red | blue | neutral
-RULE: Only use color green/red for Pros vs Cons. For React vs Vue or similar neutral comparisons, use color "blue"/"neutral".
-
-{"type":"rating","ratingTitle":"Rate these","ratingItems":[{"label":"React","defaultScore":4},{"label":"Vue","defaultScore":3}]}
-
-{"type":"quiz","questions":[{"question":"<str>","options":["A","B","C","D"],"correct":1,"explanation":"<optional>"}]}
-
-{"type":"image_gallery","query":"mountain landscape","count":6,"caption":"<optional>"}
-
-{"type":"key_value","kvTitle":"<optional str>","entries":[{"key":"Language","value":"Python","category":"<optional group>"}]}
-
-{"type":"terminal","terminalTitle":"setup.sh","lines":[{"prompt":"$","command":"npm install","output":"added 100 packages"},{"prompt":"$","command":"npm run dev"}]}
-
-{"type":"flashcard","flashcardTitle":"<optional>","flashcards":[{"front":"What is React?","back":"A JavaScript UI library"}]}
-
-{"type":"color_palette","paletteTitle":"<optional>","swatches":[{"name":"Primary","hex":"#6366f1","description":"<optional>"}]}
-
-{"type":"poll","pollQuestion":"<str>","options":[{"label":"Option A","initialPercent":30},{"label":"Option B","initialPercent":70}]}
-
-{"type":"rating_grid","gridTitle":"<optional>","criteria":["Speed","Ease","Power"],"gridItems":[{"item":"React","scores":{"Speed":8,"Ease":7,"Power":9}}]}
-
-{"type":"flow_diagram","flowTitle":"<optional>","nodes":[{"id":"a","label":"Start","x":30,"y":30,"shape":"circle"},{"id":"b","label":"Process","x":30,"y":120,"shape":"rect"}],"edges":[{"from":"a","to":"b","label":"<optional>"}]}
-shape options: rect | diamond | circle
-
-{"type":"map_highlight","mapTitle":"<optional>","highlights":[{"country":"France","value":"<optional note>"},{"country":"Japan","value":"<optional note>"}]}
-
-{"type":"document_view","docTitle":"<str>","docSubtitle":"<optional>","content":"<markdown body>"}
+{"type":"tabs_content","tabs":[{"label":"Tab1","content":"<markdown>"}]}
+{"type":"quote","quoteType":"tip","content":"<str>","author":"<opt str>"} (options: tip|warning|info|success|quote)
+{"type":"steps","steps":[{"title":"Step 1","description":"<str>","code":"npm i","language":"bash"}]}
+{"type":"comparison","leftSide":{"title":"Pros","items":["Fast"],"color":"green"},"rightSide":{"title":"Cons","items":["Heavy"],"color":"red"}} (color: green|red|blue|neutral. green/red for pros/cons, blue/neutral for comparisons)
+{"type":"rating","ratingTitle":"Rate","ratingItems":[{"label":"React","defaultScore":4}]}
+{"type":"quiz","questions":[{"question":"<str>","options":["A","B"],"correct":1,"explanation":"<opt>"}]}
+{"type":"image_gallery","query":"nature","count":6,"caption":"<opt>"}
+{"type":"key_value","kvTitle":"<opt>","entries":[{"key":"Lang","value":"Python","category":"<opt>"}]}
+{"type":"terminal","terminalTitle":"sh","lines":[{"prompt":"$","command":"ls","output":"file"}]}
+{"type":"flashcard","flashcardTitle":"<opt>","flashcards":[{"front":"Q","back":"A"}]}
+{"type":"color_palette","paletteTitle":"<opt>","swatches":[{"name":"Primary","hex":"#fff","description":"<opt>"}]}
+{"type":"poll","pollQuestion":"<str>","options":[{"label":"A","initialPercent":30}]}
+{"type":"rating_grid","gridTitle":"<opt>","criteria":["Speed"],"gridItems":[{"item":"React","scores":{"Speed":8}}]}
+{"type":"flow_diagram","flowTitle":"<opt>","nodes":[{"id":"a","label":"Start","shape":"circle"}],"edges":[{"from":"a","to":"b","label":"<opt>"}]} (shape: rect|diamond|circle. NOTE: Frontend auto-layout engine handles positioning, do NOT provide x/y coordinates)
+{"type":"map_highlight","mapTitle":"<opt>","highlights":[{"country":"France","value":"<opt>"}]}
+{"type":"document_view","docTitle":"<str>","docSubtitle":"<opt>","content":"<markdown>"}
 
 SELECTION RULES — FOLLOW EXACTLY:
-- "compare X vs Y" neutral → USE comparison(blue/neutral) + text
-- "pros and cons" / "advantages and disadvantages" → USE comparison(green/red)
-- "history of" / "timeline of" → USE timeline + text
-- "how to" / "steps to" / "tutorial" / "guide" → USE steps + quote(tip)
-- "FAQ" / "questions about" → USE accordion + text
-- "statistics" / "metrics" / "numbers" / "data" → USE stat_cards + chart
-- "difference between" structured → USE table + text
-- "code in multiple languages" → USE code(snippets) + text
-- "features" / "options" / "tools" / "list of" → USE cards + text
-- "skill levels" / "rankings" / "proficiency" → USE progress + text
-- "quiz" / "test my knowledge" → USE quiz
-- "rate" / "rating" → USE rating
-- "images" / "photos" / "gallery" → USE image_gallery
-- "install" / "setup commands" / "terminal" → USE terminal + steps
-- "flashcards" / "study cards" → USE flashcard
-- "color" / "palette" / "theme colors" → USE color_palette
-- "vote" / "poll" / "which is better" → USE poll
-- "compare multiple criteria" → USE rating_grid
-- "flow" / "diagram" / "process flow" → USE flow_diagram
-- "countries" / "map" / "world" → USE map_highlight
-- "document" / "report" / "article" → USE document_view
-- "specs" / "specifications" / "properties" → USE key_value
-- general explanation → USE text
+- compare neutral → comparison(blue/neutral) + text + table
+- pros and cons → comparison(green/red) + text + cards
+- timeline/history → timeline + text + image_gallery
+- how to/guide → steps + quote(tip) + code/terminal
+- FAQ → accordion + text + quote(info)
+- statistics/metrics → stat_cards + chart + text
+- differences → table + text + comparison
+- code snippets → code(snippets) + text + terminal
+- features/list → cards + text + key_value
+- skills/ranking → progress + text + rating_grid
+- quiz → text + quiz + flashcard
+- rating → rating + text + cards
+- images → image_gallery + text
+- setup/install → terminal + steps + code
+- flashcards → text + flashcard
+- colors → color_palette + text
+- poll/vote → poll + text
+- multi-criteria → rating_grid + text + table
+- flow/process → flow_diagram + text + steps
+- map/countries → map_highlight + text + stat_cards
+- article/report → document_view + text + quote
+- specs → key_value + text + table
+- general → text + cards + image_gallery
 
-ALWAYS return 2 or more components. Output ONLY the JSON. Nothing else.`;
-
+ALWAYS return >=4 components per response. Output ONLY JSON. Nothing else.`;
 // ── Provider call implementations ────────────────────────────────────────────
 
 async function callGeminiModel(
