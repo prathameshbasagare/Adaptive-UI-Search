@@ -1,7 +1,7 @@
 // File: ./src/app/api/chat/route.ts
 
 import { NextRequest, NextResponse } from "next/server";
-import { generateAdaptiveUI } from "@/lib/gemini";
+import { generateAdaptiveUI } from "@/lib/ai-provider";
 
 export interface ChatRequestBody {
   query: string;
@@ -35,28 +35,21 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error occurred";
 
-    if (message.includes("GEMINI_API_KEY")) {
+    if (message.includes("NO_PROVIDER_CONFIGURED")) {
       return NextResponse.json(
-        { error: "Server configuration error: API key not configured" },
+        { error: "Server configuration error: No AI provider API key is configured." },
         { status: 500 }
       );
     }
 
-    if (message.includes("invalid JSON") || message.includes("schema")) {
+    if (message.includes("All models failed")) {
       return NextResponse.json(
-        { error: "AI response could not be parsed. Please try rephrasing your query." },
+        { error: "AI service is temporarily unavailable. Please try again in a moment." },
         { status: 502 }
       );
     }
 
-    if (message.includes("404") || message.includes("not found") || message.includes("is not supported")) {
-      return NextResponse.json(
-        { error: "The configured AI model is unavailable. Please check the model name." },
-        { status: 503 }
-      );
-    }
-
-    // Extract retry delay from Gemini 429 response for a helpful message
+    // Extract retry delay from 429 response for a helpful message
     if (message.includes("429") || message.includes("Too Many Requests") || message.includes("quota")) {
       const retryMatch = message.match(/retry[^0-9]*(\d+)/i);
       const retrySeconds = retryMatch ? parseInt(retryMatch[1], 10) : null;

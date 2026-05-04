@@ -1,9 +1,45 @@
-// File: ./src/lib/gemini.ts
+// File: ./src/lib/ai-provider.ts
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { AdaptiveUIResponse } from "./types";
 
-const MODEL = "gemma-3-12b-it";
+// ── Model registry ───────────────────────────────────────────────────────────
+// Ranked strongest → weakest. The fallback loop tries models in this order,
+// skipping any whose provider API key is not configured.
+
+type Provider = "gemini" | "openrouter";
+
+interface ModelConfig {
+  id: string;
+  provider: Provider;
+  /** OpenRouter-specific model ID (only needed when provider === "openrouter") */
+  routerId?: string;
+  contextWindow: number;
+  maxOutput: number;
+}
+
+const MODEL_REGISTRY: ModelConfig[] = [
+  // ── Tier 1: Flagship models ──
+  { id: "gemini-2.5-flash",              provider: "gemini",     contextWindow: 1_048_576, maxOutput: 65_535 },
+  { id: "openrouter/owl-alpha",          provider: "openrouter", routerId: "openrouter/owl-alpha",             contextWindow: 128_000, maxOutput: 8_192 },
+  { id: "gemma-4-31b-it",               provider: "gemini",     contextWindow: 256_000,   maxOutput: 8_192 },
+  { id: "gemma-4-26b-a4b-it",           provider: "gemini",     contextWindow: 256_000,   maxOutput: 8_192 },
+
+  // ── Tier 2: Strong free models ──
+  { id: "gemma-4-31b-it-or",            provider: "openrouter", routerId: "google/gemma-4-31b-it:free",       contextWindow: 128_000, maxOutput: 8_192 },
+  { id: "gemma-3-27b-it",               provider: "gemini",     contextWindow: 128_000,   maxOutput: 8_192 },
+  { id: "nemotron-3-super",             provider: "openrouter", routerId: "nvidia/nemotron-3-super:free",     contextWindow: 32_000,  maxOutput: 8_192 },
+
+  // ── Tier 3: Lite / smaller models ──
+  { id: "gemini-3.1-flash-lite-preview", provider: "gemini",    contextWindow: 1_048_576, maxOutput: 65_535 },
+  { id: "gemini-2.5-flash-lite",         provider: "gemini",    contextWindow: 1_048_576, maxOutput: 65_535 },
+  { id: "gemma-3-12b-it",               provider: "gemini",     contextWindow: 128_000,   maxOutput: 8_192 },
+];
+
+/** Maximum number of models to try before giving up */
+const MAX_ATTEMPTS = 3;
+
+// ── Shared constants ─────────────────────────────────────────────────────────
 
 const ALL_TYPES = [
   "text", "cards", "chart", "code",
@@ -103,13 +139,91 @@ SELECTION RULES — FOLLOW EXACTLY:
 
 ALWAYS return 2 or more components. Output ONLY the JSON. Nothing else.`;
 
-function getGeminiClient(): GoogleGenerativeAI {
+// ── Provider call implementations ────────────────────────────────────────────
+
+async function callGeminiModel(
+  modelConfig: ModelConfig,
+  userQuery: string,
+  conversationHistory: { role: "user" | "model"; parts: { text: string }[] }[]
+): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error("GEMINI_API_KEY environment variable is not set");
-  }
-  return new GoogleGenerativeAI(apiKey);
+  if (!apiKey) throw new Error("GEMINI_API_KEY not configured");
+
+  const client = new GoogleGenerativeAI(apiKey);
+  const model = client.getGenerativeModel({ model: modelConfig.id });
+
+  const augmentedQuery = `${SYSTEM_PROMPT}\n\n---\nUser request: ${userQuery}\n\nRespond with ONLY the JSON object:`;
+
+  const chat = model.startChat({
+    history: conversationHistory,
+    generationConfig: {
+      temperature: 0.4,
+      maxOutputTokens: Math.min(4096, modelConfig.maxOutput),
+    },
+  });
+
+  const result = await chat.sendMessage(augmentedQuery);
+  return result.response.text();
 }
+
+async function callOpenRouterModel(
+  modelConfig: ModelConfig,
+  userQuery: string,
+  conversationHistory: { role: "user" | "model"; parts: { text: string }[] }[]
+): Promise<string> {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) throw new Error("OPENROUTER_API_KEY not configured");
+
+  // Convert Gemini-style history to OpenAI-style messages
+  const messages: { role: string; content: string }[] = [];
+
+  // System prompt
+  messages.push({ role: "system", content: SYSTEM_PROMPT });
+
+  // Conversation history
+  for (const h of conversationHistory) {
+    messages.push({
+      role: h.role === "model" ? "assistant" : "user",
+      content: h.parts.map((p) => p.text).join("\n"),
+    });
+  }
+
+  // Current user query
+  messages.push({ role: "user", content: userQuery });
+
+  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": "https://adaptive-ui-search.vercel.app",
+      "X-Title": "AdaptiveUI Search",
+    },
+    body: JSON.stringify({
+      model: modelConfig.routerId ?? modelConfig.id,
+      messages,
+      temperature: 0.4,
+      max_tokens: Math.min(4096, modelConfig.maxOutput),
+    }),
+  });
+
+  if (!response.ok) {
+    const errBody = await response.text().catch(() => "");
+    throw new Error(
+      `OpenRouter API error ${response.status}: ${errBody.slice(0, 200)}`
+    );
+  }
+
+  const data = await response.json();
+
+  if (!data.choices?.[0]?.message?.content) {
+    throw new Error("OpenRouter returned empty response");
+  }
+
+  return data.choices[0].message.content;
+}
+
+// ── JSON extraction & validation (unchanged from original) ───────────────────
 
 /*
  * Repairs common structural mistakes small models make.
@@ -207,45 +321,92 @@ function extractJSON(raw: string): string {
   return raw.trim();
 }
 
+// ── Main entry point with fallback ───────────────────────────────────────────
+
+/**
+ * Returns the list of models that can actually be used based on which
+ * API keys are configured.
+ */
+function getAvailableModels(): ModelConfig[] {
+  const hasGemini = !!process.env.GEMINI_API_KEY;
+  const hasOpenRouter = !!process.env.OPENROUTER_API_KEY;
+
+  return MODEL_REGISTRY.filter((m) => {
+    if (m.provider === "gemini") return hasGemini;
+    if (m.provider === "openrouter") return hasOpenRouter;
+    return false;
+  });
+}
+
 export async function generateAdaptiveUI(
   userQuery: string,
   conversationHistory: { role: "user" | "model"; parts: { text: string }[] }[] = []
 ): Promise<AdaptiveUIResponse> {
-  const client = getGeminiClient();
-  const model = client.getGenerativeModel({ model: MODEL });
+  const available = getAvailableModels();
 
-  const augmentedQuery = `${SYSTEM_PROMPT}\n\n---\nUser request: ${userQuery}\n\nRespond with ONLY the JSON object:`;
-
-  const chat = model.startChat({
-    history: conversationHistory,
-    generationConfig: {
-      temperature: 0.4,
-      maxOutputTokens: 4096,
-    },
-  });
-
-  const result = await chat.sendMessage(augmentedQuery);
-  const raw = result.response.text();
-
-  if (process.env.NODE_ENV === "development") {
-    console.log("[gemini.ts] raw model output:", raw.slice(0, 500));
+  if (available.length === 0) {
+    throw new Error(
+      "NO_PROVIDER_CONFIGURED: Set GEMINI_API_KEY or OPENROUTER_API_KEY in .env.local"
+    );
   }
 
-  const cleaned = extractJSON(raw);
+  const modelsToTry = available.slice(0, MAX_ATTEMPTS);
+  const errors: string[] = [];
 
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(cleaned);
-  } catch {
-    console.error("[gemini.ts] JSON parse failed. cleaned output:", cleaned.slice(0, 300));
-    throw new Error(`Model returned invalid JSON: ${cleaned.slice(0, 200)}`);
+  for (const modelConfig of modelsToTry) {
+    try {
+      if (process.env.NODE_ENV === "development") {
+        console.log(`[ai-provider] Trying model: ${modelConfig.id} (${modelConfig.provider})`);
+      }
+
+      // Call the appropriate provider
+      let raw: string;
+      if (modelConfig.provider === "gemini") {
+        raw = await callGeminiModel(modelConfig, userQuery, conversationHistory);
+      } else {
+        raw = await callOpenRouterModel(modelConfig, userQuery, conversationHistory);
+      }
+
+      if (process.env.NODE_ENV === "development") {
+        console.log(`[ai-provider] Raw output from ${modelConfig.id}:`, raw.slice(0, 500));
+      }
+
+      // Parse and validate
+      const cleaned = extractJSON(raw);
+
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(cleaned);
+      } catch {
+        const msg = `Model ${modelConfig.id} returned invalid JSON`;
+        console.error(`[ai-provider] ${msg}:`, cleaned.slice(0, 300));
+        errors.push(msg);
+        continue; // Try next model
+      }
+
+      const validated = validateResponse(parsed);
+      if (!validated) {
+        const msg = `Model ${modelConfig.id} response did not match expected schema`;
+        console.error(`[ai-provider] ${msg}:`, JSON.stringify(parsed).slice(0, 300));
+        errors.push(msg);
+        continue; // Try next model
+      }
+
+      if (process.env.NODE_ENV === "development") {
+        console.log(`[ai-provider] ✓ Success with model: ${modelConfig.id}`);
+      }
+
+      return validated;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[ai-provider] Model ${modelConfig.id} failed:`, msg.slice(0, 200));
+      errors.push(`${modelConfig.id}: ${msg.slice(0, 150)}`);
+      continue; // Try next model
+    }
   }
 
-  const validated = validateResponse(parsed);
-  if (!validated) {
-    console.error("[gemini.ts] Schema validation failed. parsed:", JSON.stringify(parsed).slice(0, 300));
-    throw new Error(`Model response did not match expected schema: ${cleaned.slice(0, 200)}`);
-  }
-
-  return validated;
+  // All models failed
+  throw new Error(
+    `All models failed after ${modelsToTry.length} attempts. Errors: ${errors.join(" | ")}`
+  );
 }

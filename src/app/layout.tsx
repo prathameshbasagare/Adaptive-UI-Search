@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "AdaptiveUI — AI-powered adaptive search",
   description:
-    "Ask anything and get a rich, adaptive UI generated on the fly using Gemini 2.0 Flash. Cards, charts, code, and more.",
+    "Ask anything and get a rich, adaptive UI generated on the fly using AI. Cards, charts, code, and more.",
 };
 
 export default function RootLayout({

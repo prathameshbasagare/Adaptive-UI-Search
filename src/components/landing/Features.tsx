@@ -12,9 +12,9 @@ import {
 const features = [
   {
     icon: Brain,
-    title: "Gemini-Powered Intelligence",
+    title: "AI-Powered Intelligence",
     description:
-      "Backed by Google's Gemma 3 27B, every response is contextually aware and tailored to your exact query — not just text, but fully structured UI.",
+      "Every response is contextually aware and tailored to your exact query — not just text, but fully structured UI powered by advanced AI models.",
     color: "violet",
   },
   {
@@ -49,7 +49,7 @@ const features = [
     icon: Zap,
     title: "Instant Response",
     description:
-      "Built on Next.js App Router with server-side Gemini API calls — fast, reliable, and ready for production use out of the box.",
+      "Built on Next.js App Router with server-side AI calls — fast, reliable, and ready for production use out of the box.",
     color: "cyan",
   },
 ];

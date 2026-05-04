@@ -34,7 +34,7 @@ export default function ChatPanel() {
     addMessage({ role: "user", content: query });
     setLoading(true);
 
-    // Build conversation history from existing messages for Gemini context
+    // Build conversation history from existing messages for AI context
     const history = messages
       .filter((m) => m.role === "user" || m.role === "assistant")
       .map((m) => ({
@@ -111,7 +111,7 @@ export default function ChatPanel() {
             </div>
             <div>
               <h2 className="text-sm font-semibold text-white">Adaptive AI</h2>
-              <p className="text-xs text-slate-500">Powered by Gemma 3 27B</p>
+              <p className="text-xs text-slate-500">AI-powered adaptive search</p>
             </div>
           </div>
           <div className="flex items-center gap-1">

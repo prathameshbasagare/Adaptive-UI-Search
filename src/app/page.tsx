@@ -68,7 +68,7 @@ export default function LandingPage() {
               <span className="text-sm text-slate-500">AdaptiveUI</span>
             </div>
             <p className="text-xs text-slate-600">
-              Built with Next.js · Tailwind CSS · Gemma 3 27B
+              Built with Next.js · Tailwind CSS
             </p>
           </div>
         </footer>

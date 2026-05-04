@@ -15,7 +15,7 @@ export default function Hero() {
       {/* Badge */}
       <div className="relative flex items-center gap-2 bg-violet-500/10 border border-violet-500/30 text-violet-300 text-xs font-medium px-3.5 py-1.5 rounded-full mb-8">
         <Sparkles size={12} />
-        Powered by Gemma 3 27B
+        AI-powered adaptive search
       </div>
 
       {/* Headline */}
@@ -29,7 +29,7 @@ export default function Hero() {
       {/* Subheading */}
       <p className="relative text-center text-slate-400 text-lg sm:text-xl max-w-2xl leading-relaxed mb-10">
         Ask any question and watch a fully adaptive UI generate itself — cards, charts, code, and more —
-        all powered by Gemini AI in real time.
+        all powered by AI in real time.
       </p>
 
       {/* CTA Buttons */}
