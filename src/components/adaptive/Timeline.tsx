@@ -21,7 +21,7 @@ export default function Timeline({ events }: TimelineProps) {
           <div key={index} className="relative flex gap-5 group">
             <div className="relative z-10 shrink-0 flex flex-col items-center">
               <div
-                className="w-10 h-10 rounded-full bg-slate-900 border-2 flex items-center justify-center transition-colors mt-1"
+                className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-900 border-2 flex items-center justify-center transition-colors mt-1"
                 style={{ borderColor: "var(--theme-500-60)" }}
               >
                 {event.icon ? (
@@ -31,7 +31,7 @@ export default function Timeline({ events }: TimelineProps) {
                 )}
               </div>
               {index < events.length - 1 && (
-                <div className="w-px flex-1 bg-slate-700/60 min-h-6" />
+                <div className="w-px flex-1 bg-slate-300/60 dark:bg-slate-700/60 min-h-6" />
               )}
             </div>
 
@@ -49,9 +49,9 @@ export default function Timeline({ events }: TimelineProps) {
                     {event.year}
                   </span>
                 )}
-                <h3 className="font-semibold text-white text-sm">{event.title}</h3>
+                <h3 className="font-semibold text-slate-950 dark:text-white text-sm">{event.title}</h3>
               </div>
-              <p className="text-slate-400 text-sm leading-relaxed">{event.description}</p>
+              <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">{event.description}</p>
             </div>
           </div>
         ))}

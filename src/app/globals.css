@@ -3,9 +3,16 @@
 /* ── Base ──────────────────────────────────────────────────────────────────── */
 
 :root {
-  --background: #020617;
-  --foreground: #f1f5f9;
+  --background: #f8fafc; /* slate-50 */
+  --foreground: #0f172a; /* slate-900 */
 }
+
+.dark {
+  --background: #020617; /* slate-950 */
+  --foreground: #f1f5f9; /* slate-100 */
+}
+
+@custom-variant dark (&:where(.dark, .dark *));
 
 @theme inline {
   --color-background: var(--background);

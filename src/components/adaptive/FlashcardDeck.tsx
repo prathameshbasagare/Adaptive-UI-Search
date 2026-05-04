@@ -24,12 +24,12 @@ export default function FlashcardDeck({ flashcardTitle, flashcards }: FlashcardD
 
   return (
     <div className="space-y-4">
-      {flashcardTitle && <h3 className="font-semibold text-white text-sm">{flashcardTitle}</h3>}
+      {flashcardTitle && <h3 className="font-semibold text-slate-950 dark:text-white text-sm">{flashcardTitle}</h3>}
 
       {/* Progress */}
-      <div className="flex items-center gap-2 text-xs text-slate-500">
+      <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-500">
         <span>Card {index + 1} of {flashcards.length}</span>
-        <div className="flex-1 h-1 bg-slate-800 rounded-full overflow-hidden">
+        <div className="flex-1 h-1 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
           <div
             className="h-full rounded-full transition-all duration-300"
             style={{ width: `${((index + 1) / flashcards.length) * 100}%`, backgroundColor: "var(--theme-500)" }}
@@ -48,21 +48,21 @@ export default function FlashcardDeck({ flashcardTitle, flashcards }: FlashcardD
         >
           {/* Front */}
           <div
-            className="flashcard-face absolute inset-0 flex flex-col items-center justify-center p-6 rounded-2xl border border-slate-700 text-center"
+            className="flashcard-face absolute inset-0 flex flex-col items-center justify-center p-6 rounded-2xl border border-slate-300 dark:border-slate-700 text-center"
             style={{ backgroundColor: "var(--theme-500-10)", borderColor: "var(--theme-500-30)" }}
           >
             <span className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: "var(--theme-400)" }}>Question</span>
-            <p className="text-white font-medium text-base leading-snug">{card.front}</p>
-            <p className="mt-4 text-xs text-slate-600">Click to reveal answer</p>
+            <p className="text-slate-950 dark:text-white font-medium text-base leading-snug">{card.front}</p>
+            <p className="mt-4 text-xs text-slate-400 dark:text-slate-600">Click to reveal answer</p>
           </div>
 
           {/* Back */}
           <div
-            className="flashcard-back flashcard-face flex flex-col items-center justify-center p-6 rounded-2xl border border-slate-600 text-center"
+            className="flashcard-back flashcard-face flex flex-col items-center justify-center p-6 rounded-2xl border border-slate-400 dark:border-slate-600 text-center"
             style={{ backgroundColor: "#0f172a" }}
           >
             <span className="text-xs font-semibold uppercase tracking-wide mb-3 text-emerald-400">Answer</span>
-            <p className="text-slate-200 text-base leading-relaxed">{card.back}</p>
+            <p className="text-slate-800 dark:text-slate-200 text-base leading-relaxed">{card.back}</p>
           </div>
         </div>
       </div>
@@ -72,20 +72,20 @@ export default function FlashcardDeck({ flashcardTitle, flashcards }: FlashcardD
         <button
           onClick={() => go(-1)}
           disabled={index === 0}
-          className="p-2 rounded-lg border border-slate-700 text-slate-400 hover:text-white hover:border-slate-600 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+          className="p-2 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white hover:border-slate-400 dark:hover:border-slate-600 disabled:opacity-30 disabled:pointer-events-none transition-colors"
         >
           <ChevronLeft size={18} />
         </button>
         <button
           onClick={() => { setFlipped(false); }}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-700 text-xs text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white hover:border-slate-400 dark:hover:border-slate-600 transition-colors"
         >
           <RotateCcw size={13} /> Reset
         </button>
         <button
           onClick={() => go(1)}
           disabled={index === flashcards.length - 1}
-          className="p-2 rounded-lg border border-slate-700 text-slate-400 hover:text-white hover:border-slate-600 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+          className="p-2 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white hover:border-slate-400 dark:hover:border-slate-600 disabled:opacity-30 disabled:pointer-events-none transition-colors"
         >
           <ChevronRight size={18} />
         </button>

@@ -220,7 +220,7 @@ export default function AdaptiveContent({ response }: AdaptiveContentProps) {
     <div className="space-y-6 animate-fadeIn">
       {response.summary && (
         <p
-          className="text-slate-400 text-sm leading-relaxed border-l-2 pl-3"
+          className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed border-l-2 pl-3"
           style={{ borderColor: "var(--theme-500-60)" }}
         >
           {response.summary}

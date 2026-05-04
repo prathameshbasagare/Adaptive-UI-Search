@@ -22,11 +22,11 @@ export default function FloatingChatButton() {
       }}
       aria-label="Open chat"
     >
-      <MessageCircle size={22} className="text-white" />
+      <MessageCircle size={22} className="text-slate-950 dark:text-white" />
       {messages.length > 0 && (
-        <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-400 rounded-full border-2 border-slate-900" />
+        <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-400 rounded-full border-2 border-slate-100 dark:border-slate-900" />
       )}
-      <span className="absolute right-16 top-1/2 -translate-y-1/2 bg-slate-800 text-slate-200 text-xs font-medium px-2.5 py-1.5 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none shadow border border-slate-700">
+      <span className="absolute right-16 top-1/2 -translate-y-1/2 bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-medium px-2.5 py-1.5 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none shadow border border-slate-300 dark:border-slate-700">
         Ask Adaptive AI
       </span>
     </button>

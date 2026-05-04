@@ -99,26 +99,26 @@ export default function ChatPanel() {
 
       {/* Chat panel */}
       <div
-        className={`fixed right-0 top-0 h-full w-full sm:w-96 bg-slate-900 border-l border-slate-700/60 shadow-2xl z-40 flex flex-col transition-transform duration-300 ease-out ${
+        className={`fixed right-0 top-0 h-full w-full sm:w-96 bg-slate-100 dark:bg-slate-900 border-l border-slate-300/60 dark:border-slate-700/60 shadow-2xl z-40 flex flex-col transition-transform duration-300 ease-out ${
           isChatOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3.5 border-b border-slate-700/60 bg-slate-900/95 backdrop-blur-sm">
+        <div className="flex items-center justify-between px-4 py-3.5 border-b border-slate-300/60 dark:border-slate-700/60 bg-slate-100/95 dark:bg-slate-900/95 backdrop-blur-sm">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-violet-600/20 border border-violet-500/30 flex items-center justify-center">
               <Sparkles size={15} className="text-violet-400" />
             </div>
             <div>
-              <h2 className="text-sm font-semibold text-white">Adaptive AI</h2>
-              <p className="text-xs text-slate-500">AI-powered adaptive search</p>
+              <h2 className="text-sm font-semibold text-slate-950 dark:text-white">Adaptive AI</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-500">AI-powered adaptive search</p>
             </div>
           </div>
           <div className="flex items-center gap-1">
             {messages.length > 0 && (
               <button
                 onClick={clearMessages}
-                className="p-1.5 text-slate-500 hover:text-slate-300 hover:bg-slate-700/60 rounded-lg transition-colors"
+                className="p-1.5 text-slate-500 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-300/60 dark:hover:bg-slate-700/60 rounded-lg transition-colors"
                 title="Clear conversation"
                 aria-label="Clear conversation"
               >
@@ -127,7 +127,7 @@ export default function ChatPanel() {
             )}
             <button
               onClick={toggleChat}
-              className="p-1.5 text-slate-500 hover:text-slate-300 hover:bg-slate-700/60 rounded-lg transition-colors"
+              className="p-1.5 text-slate-500 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-300/60 dark:hover:bg-slate-700/60 rounded-lg transition-colors"
               aria-label="Close chat"
             >
               <X size={16} />
@@ -143,8 +143,8 @@ export default function ChatPanel() {
                 <Sparkles size={24} className="text-violet-400" />
               </div>
               <div>
-                <p className="text-white font-medium mb-1">Ask me anything</p>
-                <p className="text-slate-500 text-sm leading-relaxed">
+                <p className="text-slate-950 dark:text-white font-medium mb-1">Ask me anything</p>
+                <p className="text-slate-500 dark:text-slate-500 text-sm leading-relaxed">
                   I&apos;ll generate a rich, adaptive UI response tailored to your query.
                 </p>
               </div>
@@ -157,7 +157,7 @@ export default function ChatPanel() {
                   <button
                     key={suggestion}
                     onClick={() => setInput(suggestion)}
-                    className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 hover:border-slate-600 px-3 py-1.5 rounded-full transition-colors"
+                    className="text-xs bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-600 px-3 py-1.5 rounded-full transition-colors"
                   >
                     {suggestion}
                   </button>
@@ -170,13 +170,13 @@ export default function ChatPanel() {
 
           {isLoading && (
             <div className="flex gap-2.5">
-              <div className="shrink-0 w-7 h-7 rounded-full bg-slate-700 flex items-center justify-center">
+              <div className="shrink-0 w-7 h-7 rounded-full bg-slate-300 dark:bg-slate-700 flex items-center justify-center">
                 <Loader2 size={14} className="text-violet-300 animate-spin" />
               </div>
-              <div className="bg-slate-700/80 rounded-2xl rounded-tl-sm px-4 py-3 flex gap-1.5 items-center">
-                <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:0ms]" />
-                <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:150ms]" />
-                <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:300ms]" />
+              <div className="bg-slate-300/80 dark:bg-slate-700/80 rounded-2xl rounded-tl-sm px-4 py-3 flex gap-1.5 items-center">
+                <span className="w-1.5 h-1.5 bg-slate-600 dark:bg-slate-400 rounded-full animate-bounce [animation-delay:0ms]" />
+                <span className="w-1.5 h-1.5 bg-slate-600 dark:bg-slate-400 rounded-full animate-bounce [animation-delay:150ms]" />
+                <span className="w-1.5 h-1.5 bg-slate-600 dark:bg-slate-400 rounded-full animate-bounce [animation-delay:300ms]" />
               </div>
             </div>
           )}
@@ -185,8 +185,8 @@ export default function ChatPanel() {
         </div>
 
         {/* Input */}
-        <form onSubmit={handleSubmit} className="p-4 border-t border-slate-700/60">
-          <div className="flex items-end gap-2 bg-slate-800 border border-slate-700 rounded-xl p-2 focus-within:border-violet-500/60 transition-colors">
+        <form onSubmit={handleSubmit} className="p-4 border-t border-slate-300/60 dark:border-slate-700/60">
+          <div className="flex items-end gap-2 bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl p-2 focus-within:border-violet-500/60 transition-colors">
             <textarea
               ref={inputRef}
               value={input}
@@ -195,7 +195,7 @@ export default function ChatPanel() {
               placeholder="Ask anything… (Enter to send)"
               rows={1}
               disabled={isLoading}
-              className="flex-1 bg-transparent text-sm text-slate-200 placeholder:text-slate-500 resize-none outline-none px-2 py-1.5 max-h-32 scrollbar-thin scrollbar-thumb-slate-600 disabled:opacity-50"
+              className="flex-1 bg-transparent text-sm text-slate-800 dark:text-slate-200 placeholder:text-slate-500 dark:placeholder:text-slate-500 resize-none outline-none px-2 py-1.5 max-h-32 scrollbar-thin scrollbar-thumb-slate-600 disabled:opacity-50"
               style={{ minHeight: "2.25rem" }}
               onInput={(e) => {
                 const el = e.currentTarget;
@@ -206,7 +206,7 @@ export default function ChatPanel() {
             <button
               type="submit"
               disabled={!input.trim() || isLoading}
-              className="shrink-0 w-8 h-8 bg-violet-600 hover:bg-violet-500 disabled:bg-slate-700 disabled:text-slate-500 text-white rounded-lg flex items-center justify-center transition-colors"
+              className="shrink-0 w-8 h-8 bg-violet-600 hover:bg-violet-500 disabled:bg-slate-300 dark:disabled:bg-slate-700 disabled:text-slate-500 dark:disabled:text-slate-500 text-slate-950 dark:text-white rounded-lg flex items-center justify-center transition-colors"
               aria-label="Send message"
             >
               {isLoading ? (
@@ -216,7 +216,7 @@ export default function ChatPanel() {
               )}
             </button>
           </div>
-          <p className="text-xs text-slate-600 mt-1.5 text-center">
+          <p className="text-xs text-slate-400 dark:text-slate-600 mt-1.5 text-center">
             Shift+Enter for new line
           </p>
         </form>

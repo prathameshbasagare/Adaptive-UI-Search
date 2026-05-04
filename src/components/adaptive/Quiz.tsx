@@ -32,10 +32,10 @@ function QuestionCard({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs text-slate-500 font-mono">
+        <span className="text-xs text-slate-500 dark:text-slate-500 font-mono">
           Question {index + 1} of {total}
         </span>
-        <div className="w-32 h-1 bg-slate-700 rounded-full overflow-hidden">
+        <div className="w-32 h-1 bg-slate-300 dark:bg-slate-700 rounded-full overflow-hidden">
           <div
             className="h-full rounded-full transition-all"
             style={{
@@ -45,7 +45,7 @@ function QuestionCard({
           />
         </div>
       </div>
-      <p className="text-white font-medium text-base leading-snug">{question.question}</p>
+      <p className="text-slate-950 dark:text-white font-medium text-base leading-snug">{question.question}</p>
       <div className="grid grid-cols-1 gap-2.5">
         {question.options.map((opt, i) => {
           let style: React.CSSProperties = {};
@@ -68,7 +68,7 @@ function QuestionCard({
               key={i}
               onClick={() => handleSelect(i)}
               disabled={selected !== null}
-              className={`flex items-center gap-3 w-full text-left px-4 py-3 rounded-xl border border-slate-600 text-slate-300 text-sm transition-all duration-150 ${
+              className={`flex items-center gap-3 w-full text-left px-4 py-3 rounded-xl border border-slate-400 dark:border-slate-600 text-slate-700 dark:text-slate-300 text-sm transition-all duration-150 ${
                 selected === null ? "hover:border-[var(--theme-500)] hover:bg-[var(--theme-500-10)]" : ""
               } ${extra}`}
               style={style}
@@ -143,12 +143,12 @@ export default function Quiz({ questions }: QuizProps) {
   if (done) {
     const pct = Math.round((score / questions.length) * 100);
     return (
-      <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-8 text-center space-y-4">
+      <div className="bg-slate-200/40 dark:bg-slate-800/40 border border-slate-300 dark:border-slate-700 rounded-xl p-8 text-center space-y-4">
         <Trophy size={48} className="mx-auto" style={{ color: "var(--theme-400)" }} />
-        <h3 className="text-2xl font-bold text-white">Quiz Complete!</h3>
-        <p className="text-slate-400">
+        <h3 className="text-2xl font-bold text-slate-950 dark:text-white">Quiz Complete!</h3>
+        <p className="text-slate-600 dark:text-slate-400">
           You scored{" "}
-          <span className="font-bold text-white">
+          <span className="font-bold text-slate-950 dark:text-white">
             {score}/{questions.length}
           </span>{" "}
           ({pct}%)
@@ -161,7 +161,7 @@ export default function Quiz({ questions }: QuizProps) {
         </div>
         <button
           onClick={handleRestart}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-medium transition-opacity hover:opacity-90"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-slate-950 dark:text-white text-sm font-medium transition-opacity hover:opacity-90"
           style={{ backgroundColor: "var(--theme-500)" }}
         >
           Try Again
@@ -171,7 +171,7 @@ export default function Quiz({ questions }: QuizProps) {
   }
 
   return (
-    <div className="bg-slate-800/40 border border-slate-700 rounded-xl overflow-hidden">
+    <div className="bg-slate-200/40 dark:bg-slate-800/40 border border-slate-300 dark:border-slate-700 rounded-xl overflow-hidden">
       <div className="px-5 py-5">
         <QuestionCard
           question={questions[currentIndex]}
@@ -182,7 +182,7 @@ export default function Quiz({ questions }: QuizProps) {
       </div>
       {answered !== null && (
         <div
-          className="px-5 py-4 border-t border-slate-700 flex items-center justify-between"
+          className="px-5 py-4 border-t border-slate-300 dark:border-slate-700 flex items-center justify-between"
           style={{ backgroundColor: "rgba(15,23,42,0.4)" }}
         >
           <span
@@ -192,7 +192,7 @@ export default function Quiz({ questions }: QuizProps) {
           </span>
           <button
             onClick={handleNext}
-            className="px-4 py-2 rounded-lg text-white text-sm font-medium transition-opacity hover:opacity-90"
+            className="px-4 py-2 rounded-lg text-slate-950 dark:text-white text-sm font-medium transition-opacity hover:opacity-90"
             style={{ backgroundColor: "var(--theme-500)" }}
           >
             {currentIndex + 1 >= questions.length ? "See Results" : "Next →"}

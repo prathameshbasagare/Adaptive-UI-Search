@@ -17,12 +17,12 @@ export default function AppPage() {
 
   return (
     <ModalProvider>
-      <div className="min-h-screen bg-slate-950 text-white flex flex-col">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-950 dark:text-white flex flex-col">
         {/* Top bar */}
-        <header className="h-12 flex items-center justify-between px-4 border-b border-slate-800 bg-slate-900/80 backdrop-blur-sm z-20 shrink-0">
+        <header className="h-12 flex items-center justify-between px-4 border-b border-slate-200 dark:border-slate-800 bg-slate-100/80 dark:bg-slate-900/80 backdrop-blur-sm z-20 shrink-0">
           <Link
             href="/"
-            className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm"
+            className="flex items-center gap-2 text-slate-600 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white transition-colors text-sm"
           >
             <ChevronLeft size={16} />
             <Home size={15} />
@@ -31,7 +31,7 @@ export default function AppPage() {
 
           <div className="flex items-center gap-2">
             <LayoutGrid size={15} style={{ color: "var(--theme-400)" }} />
-            <span className="text-sm font-medium text-slate-300">Adaptive UI</span>
+            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Adaptive UI</span>
           </div>
 
           <ThemePicker />
@@ -46,7 +46,7 @@ export default function AppPage() {
           <main className="flex-1 flex flex-col overflow-hidden">
             {/* Tab bar */}
             {tabs.length > 0 && (
-              <div className="flex items-center gap-1 px-3 py-2 border-b border-slate-800 bg-slate-900/60 overflow-x-auto scrollbar-thin scrollbar-thumb-slate-700">
+              <div className="flex items-center gap-1 px-3 py-2 border-b border-slate-200 dark:border-slate-800 bg-slate-100/60 dark:bg-slate-900/60 overflow-x-auto scrollbar-thin scrollbar-thumb-slate-700">
                 {tabs.map((tab) => (
                   <button
                     key={tab.id}
@@ -76,10 +76,10 @@ export default function AppPage() {
                   <div className="mb-6">
                     <div className="flex items-start justify-between gap-4">
                       <div>
-                        <h1 className="text-2xl font-bold text-white mb-1">
+                        <h1 className="text-2xl font-bold text-slate-950 dark:text-white mb-1">
                           {activeTab.title}
                         </h1>
-                        <p className="text-sm text-slate-500 flex items-center gap-1.5">
+                        <p className="text-sm text-slate-500 dark:text-slate-500 flex items-center gap-1.5">
                           <span
                             className="inline-block w-1.5 h-1.5 rounded-full"
                             style={{ backgroundColor: "var(--theme-500)" }}
@@ -87,7 +87,7 @@ export default function AppPage() {
                           {activeTab.query}
                         </p>
                       </div>
-                      <span className="shrink-0 text-xs text-slate-600 mt-1">
+                      <span className="shrink-0 text-xs text-slate-400 dark:text-slate-600 mt-1">
                         {new Date(activeTab.createdAt).toLocaleTimeString([], {
                           hour: "2-digit",
                           minute: "2-digit",
@@ -118,22 +118,22 @@ export default function AppPage() {
                     >
                       <LayoutGrid size={36} style={{ color: "var(--theme-400)" }} />
                     </div>
-                    <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-slate-900 rounded-full flex items-center justify-center border border-slate-700">
+                    <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-slate-100 dark:bg-slate-900 rounded-full flex items-center justify-center border border-slate-300 dark:border-slate-700">
                       <span className="text-xs">✨</span>
                     </div>
                   </div>
                   <div className="max-w-sm">
-                    <h2 className="text-xl font-semibold text-white mb-2">
+                    <h2 className="text-xl font-semibold text-slate-950 dark:text-white mb-2">
                       Your canvas is ready
                     </h2>
-                    <p className="text-slate-500 text-sm leading-relaxed">
+                    <p className="text-slate-500 dark:text-slate-500 text-sm leading-relaxed">
                       Open the chat and ask anything — I&apos;ll generate a rich, adaptive UI right here.
                       Each query creates a new tab.
                     </p>
                   </div>
                   <button
                     onClick={() => useChatStore.getState().toggleChat()}
-                    className="flex items-center gap-2 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition-colors hover:opacity-90"
+                    className="flex items-center gap-2 text-slate-950 dark:text-white text-sm font-medium px-5 py-2.5 rounded-xl transition-colors hover:opacity-90"
                     style={{ backgroundColor: "var(--theme-500)" }}
                   >
                     Open Chat

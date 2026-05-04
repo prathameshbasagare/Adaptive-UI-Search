@@ -19,7 +19,7 @@ export default function CardGrid({ cards }: CardGridProps) {
       {cards.map((card, index) => (
         <div
           key={index}
-          className={`group relative bg-slate-800/60 border border-slate-700 rounded-xl overflow-hidden transition-all duration-200 hover:bg-slate-800 hover:shadow-lg ${
+          className={`group relative bg-slate-200/60 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 rounded-xl overflow-hidden transition-all duration-200 hover:bg-slate-200 dark:hover:bg-slate-800 hover:shadow-lg ${
             card.details ? "cursor-pointer" : ""
           }`}
           style={{
@@ -44,7 +44,7 @@ export default function CardGrid({ cards }: CardGridProps) {
 
             <div className="flex items-start justify-between gap-2 mb-2">
               <h3
-                className="font-semibold text-white text-base leading-snug transition-colors"
+                className="font-semibold text-slate-950 dark:text-white text-base leading-snug transition-colors"
                 style={{ color: "inherit" }}
               >
                 {card.title}
@@ -65,17 +65,17 @@ export default function CardGrid({ cards }: CardGridProps) {
                 {card.details && (
                   <ExternalLink
                     size={13}
-                    className="text-slate-500 group-hover:text-slate-300 transition-colors"
+                    className="text-slate-500 dark:text-slate-500 group-hover:text-slate-700 dark:group-hover:text-slate-300 transition-colors"
                   />
                 )}
               </div>
             </div>
 
-            <p className="text-slate-400 text-sm leading-relaxed">{card.body}</p>
+            <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">{card.body}</p>
 
             {/* Hover preview for cards with details */}
             {card.details && (
-              <p className="mt-2 text-xs text-slate-600 group-hover:text-slate-500 transition-colors line-clamp-2">
+              <p className="mt-2 text-xs text-slate-400 dark:text-slate-600 group-hover:text-slate-500 dark:group-hover:text-slate-500 transition-colors line-clamp-2">
                 {card.details.replace(/[#*`]/g, "").slice(0, 100)}…
               </p>
             )}

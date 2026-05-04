@@ -15,6 +15,7 @@ import {
   Legend,
 } from "chart.js";
 import { Bar, Line, Pie, Doughnut, Chart } from "react-chartjs-2";
+import { useThemeStore } from "@/hooks/useThemeStore";
 import type { ChartData } from "@/lib/types";
 
 ChartJS.register(
@@ -54,50 +55,50 @@ function enrichChartData(data: ChartData): ChartData {
   };
 }
 
-const commonOptions = {
+const getCommonOptions = (mode: "light" | "dark") => ({
   responsive: true,
   maintainAspectRatio: true,
   plugins: {
     legend: {
-      labels: { color: "#cbd5e1", font: { size: 12 }, padding: 16 },
+      labels: { color: mode === "light" ? "#475569" : "#cbd5e1", font: { size: 12 }, padding: 16 },
     },
     tooltip: {
-      backgroundColor: "#1e293b",
-      titleColor: "#f1f5f9",
-      bodyColor: "#cbd5e1",
-      borderColor: "#334155",
+      backgroundColor: mode === "light" ? "#ffffff" : "#1e293b",
+      titleColor: mode === "light" ? "#0f172a" : "#f1f5f9",
+      bodyColor: mode === "light" ? "#475569" : "#cbd5e1",
+      borderColor: mode === "light" ? "#e2e8f0" : "#334155",
       borderWidth: 1,
     },
   },
   scales: {
     x: {
-      ticks: { color: "#94a3b8" },
-      grid: { color: "rgba(51,65,85,0.6)" },
+      ticks: { color: mode === "light" ? "#64748b" : "#94a3b8" },
+      grid: { color: mode === "light" ? "rgba(203,213,225,0.6)" : "rgba(51,65,85,0.6)" },
     },
     y: {
-      ticks: { color: "#94a3b8" },
-      grid: { color: "rgba(51,65,85,0.6)" },
+      ticks: { color: mode === "light" ? "#64748b" : "#94a3b8" },
+      grid: { color: mode === "light" ? "rgba(203,213,225,0.6)" : "rgba(51,65,85,0.6)" },
     },
   },
-};
+});
 
-const pieOptions = {
+const getPieOptions = (mode: "light" | "dark") => ({
   responsive: true,
   maintainAspectRatio: true,
   plugins: {
     legend: {
       position: "bottom" as const,
-      labels: { color: "#cbd5e1", font: { size: 12 }, padding: 16 },
+      labels: { color: mode === "light" ? "#475569" : "#cbd5e1", font: { size: 12 }, padding: 16 },
     },
     tooltip: {
-      backgroundColor: "#1e293b",
-      titleColor: "#f1f5f9",
-      bodyColor: "#cbd5e1",
-      borderColor: "#334155",
+      backgroundColor: mode === "light" ? "#ffffff" : "#1e293b",
+      titleColor: mode === "light" ? "#0f172a" : "#f1f5f9",
+      bodyColor: mode === "light" ? "#475569" : "#cbd5e1",
+      borderColor: mode === "light" ? "#e2e8f0" : "#334155",
       borderWidth: 1,
     },
   },
-};
+});
 
 interface ChartBlockProps {
   chartType?: "bar" | "line" | "pie" | "doughnut";
@@ -106,6 +107,7 @@ interface ChartBlockProps {
 }
 
 export default function ChartBlock({ chartType = "bar", chartData, chartTitle }: ChartBlockProps) {
+  const { mode } = useThemeStore();
   const enriched = enrichChartData(chartData);
 
   const titlePlugin = chartTitle
@@ -113,7 +115,7 @@ export default function ChartBlock({ chartType = "bar", chartData, chartTitle }:
         title: {
           display: true,
           text: chartTitle,
-          color: "#e2e8f0",
+          color: mode === "light" ? "#0f172a" : "#e2e8f0",
           font: { size: 14, weight: "bold" as const },
         },
       }
@@ -121,11 +123,13 @@ export default function ChartBlock({ chartType = "bar", chartData, chartTitle }:
 
   // Mixed chart: at least one dataset has its own type override
   const isMixed = enriched.datasets.some((ds) => ds.type && ds.type !== chartType);
+  const common = getCommonOptions(mode);
+  const pie = getPieOptions(mode);
 
   return (
-    <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-6">
+    <div className="bg-slate-200/60 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 rounded-xl p-6">
       {chartTitle && (
-        <h3 className="text-white font-semibold text-base mb-4">{chartTitle}</h3>
+        <h3 className="text-slate-950 dark:text-white font-semibold text-base mb-4">{chartTitle}</h3>
       )}
       <div className="w-full max-h-80 flex items-center justify-center">
         {isMixed ? (
@@ -135,22 +139,22 @@ export default function ChartBlock({ chartType = "bar", chartData, chartTitle }:
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             data={enriched as any}
             options={{
-              ...commonOptions,
-              plugins: { ...commonOptions.plugins, ...titlePlugin },
+              ...common,
+              plugins: { ...common.plugins, ...titlePlugin },
             }}
           />
         ) : chartType === "bar" ? (
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          <Bar data={enriched as any} options={{ ...commonOptions, plugins: { ...commonOptions.plugins, ...titlePlugin } }} />
+          <Bar data={enriched as any} options={{ ...common, plugins: { ...common.plugins, ...titlePlugin } }} />
         ) : chartType === "line" ? (
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          <Line data={enriched as any} options={{ ...commonOptions, plugins: { ...commonOptions.plugins, ...titlePlugin } }} />
+          <Line data={enriched as any} options={{ ...common, plugins: { ...common.plugins, ...titlePlugin } }} />
         ) : chartType === "pie" ? (
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          <Pie data={enriched as any} options={{ ...pieOptions, plugins: { ...pieOptions.plugins, ...titlePlugin } }} />
+          <Pie data={enriched as any} options={{ ...pie, plugins: { ...pie.plugins, ...titlePlugin } }} />
         ) : (
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          <Doughnut data={enriched as any} options={{ ...pieOptions, plugins: { ...pieOptions.plugins, ...titlePlugin } }} />
+          <Doughnut data={enriched as any} options={{ ...pie, plugins: { ...pie.plugins, ...titlePlugin } }} />
         )}
       </div>
     </div>

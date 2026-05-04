@@ -61,11 +61,11 @@ function SideColumn({ side, isProsCons }: { side: ComparisonSide; isProsCons: bo
           className="px-4 py-3 border-b"
           style={{ backgroundColor: "var(--theme-500-10)", borderColor: "var(--theme-500-20)" }}
         >
-          <h3 className="font-semibold text-white text-sm">{side.title}</h3>
+          <h3 className="font-semibold text-slate-950 dark:text-white text-sm">{side.title}</h3>
         </div>
         <ul className="p-4 space-y-2.5">
           {side.items.map((item, i) => (
-            <li key={i} className="flex items-start gap-2.5 text-sm text-slate-300">
+            <li key={i} className="flex items-start gap-2.5 text-sm text-slate-700 dark:text-slate-300">
               <Minus size={15} className="shrink-0 mt-0.5" style={{ color: "var(--theme-400)" }} />
               <span className="leading-relaxed">{item}</span>
             </li>
@@ -81,11 +81,11 @@ function SideColumn({ side, isProsCons }: { side: ComparisonSide; isProsCons: bo
   return (
     <div className={`flex-1 border ${palette.border} rounded-xl overflow-hidden`}>
       <div className={`px-4 py-3 ${palette.header}`}>
-        <h3 className="font-semibold text-white text-sm">{side.title}</h3>
+        <h3 className="font-semibold text-slate-950 dark:text-white text-sm">{side.title}</h3>
       </div>
       <ul className="p-4 space-y-2.5">
         {side.items.map((item, i) => (
-          <li key={i} className="flex items-start gap-2.5 text-sm text-slate-300">
+          <li key={i} className="flex items-start gap-2.5 text-sm text-slate-700 dark:text-slate-300">
             <Icon size={15} className={`${palette.iconColor} shrink-0 mt-0.5`} />
             <span className="leading-relaxed">{item}</span>
           </li>
@@ -103,9 +103,9 @@ export default function Comparison({ leftSide, rightSide }: ComparisonProps) {
       <SideColumn side={leftSide} isProsCons={isProsCons} />
       <div className="hidden sm:flex items-center self-stretch">
         <div className="flex flex-col items-center gap-1">
-          <div className="w-px flex-1 bg-slate-700/60" />
-          <span className="text-xs text-slate-600 font-mono">vs</span>
-          <div className="w-px flex-1 bg-slate-700/60" />
+          <div className="w-px flex-1 bg-slate-300/60 dark:bg-slate-700/60" />
+          <span className="text-xs text-slate-400 dark:text-slate-600 font-mono">vs</span>
+          <div className="w-px flex-1 bg-slate-300/60 dark:bg-slate-700/60" />
         </div>
       </div>
       <SideColumn side={rightSide} isProsCons={isProsCons} />

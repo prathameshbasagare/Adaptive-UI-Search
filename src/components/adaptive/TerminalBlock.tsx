@@ -42,14 +42,14 @@ function TerminalLineRow({ line, active, onDone }: { line: TerminalLine; active:
       {command && (
         <div className="flex items-center gap-2">
           <span className="select-none" style={{ color: "var(--theme-400)" }}>{prompt}</span>
-          <span className="text-white font-mono text-sm">
+          <span className="text-slate-950 dark:text-white font-mono text-sm">
             {active ? displayed : command}
             {active && !done && <span className="cursor-blink">▋</span>}
           </span>
         </div>
       )}
       {(!command || done || !active) && line.output && (
-        <p className="text-slate-400 font-mono text-xs leading-relaxed pl-6 whitespace-pre-wrap">{line.output}</p>
+        <p className="text-slate-600 dark:text-slate-400 font-mono text-xs leading-relaxed pl-6 whitespace-pre-wrap">{line.output}</p>
       )}
     </div>
   );
@@ -59,13 +59,13 @@ export default function TerminalBlock({ terminalTitle, lines }: TerminalBlockPro
   const [activeLine, setActiveLine] = useState(0);
 
   return (
-    <div className="rounded-xl overflow-hidden border border-slate-700 bg-[#0d1117]">
+    <div className="rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700 bg-[#0d1117]">
       {/* Chrome bar */}
-      <div className="flex items-center gap-2 px-4 py-3 bg-slate-800/60 border-b border-slate-700">
+      <div className="flex items-center gap-2 px-4 py-3 bg-slate-200/60 dark:bg-slate-800/60 border-b border-slate-300 dark:border-slate-700">
         <span className="w-3 h-3 rounded-full bg-red-500/70" />
         <span className="w-3 h-3 rounded-full bg-amber-500/70" />
         <span className="w-3 h-3 rounded-full bg-emerald-500/70" />
-        <span className="ml-3 text-xs text-slate-500 font-mono">{terminalTitle ?? "terminal"}</span>
+        <span className="ml-3 text-xs text-slate-500 dark:text-slate-500 font-mono">{terminalTitle ?? "terminal"}</span>
       </div>
 
       <div className="p-5 space-y-3 font-mono">

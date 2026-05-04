@@ -32,8 +32,8 @@ export default function Quote({ quoteType = "info", content, author }: QuoteProp
           {config.label && (
             <p className={`text-xs font-semibold uppercase tracking-wide ${config.iconClass} mb-1`}>{config.label}</p>
           )}
-          <p className="text-slate-300 text-sm leading-relaxed">{content}</p>
-          {author && <p className="text-slate-500 text-xs mt-2 italic">— {author}</p>}
+          <p className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed">{content}</p>
+          {author && <p className="text-slate-500 dark:text-slate-500 text-xs mt-2 italic">— {author}</p>}
         </div>
       </div>
     </div>

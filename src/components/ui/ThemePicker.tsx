@@ -3,10 +3,11 @@
 "use client";
 
 import { useEffect } from "react";
+import { Sun, Moon } from "lucide-react";
 import { useThemeStore, THEME_COLORS, applyPersistedTheme, type ThemeName } from "@/hooks/useThemeStore";
 
 export default function ThemePicker() {
-  const { theme, setTheme } = useThemeStore();
+  const { theme, setTheme, mode, toggleMode } = useThemeStore();
 
   // Sync persisted theme to DOM on first mount
   useEffect(() => {
@@ -33,6 +34,17 @@ export default function ThemePicker() {
           />
         )
       )}
+      
+      <div className="w-px h-5 bg-slate-300/50 dark:bg-slate-700/50 mx-1" />
+      
+      <button
+        onClick={toggleMode}
+        title={`Switch to ${mode === 'light' ? 'dark' : 'light'} mode`}
+        aria-label={`Switch to ${mode === 'light' ? 'dark' : 'light'} mode`}
+        className="w-7 h-7 flex items-center justify-center rounded-full text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+      >
+        {mode === "light" ? <Moon size={16} /> : <Sun size={16} />}
+      </button>
     </div>
   );
 }

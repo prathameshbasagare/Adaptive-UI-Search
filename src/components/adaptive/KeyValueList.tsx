@@ -22,10 +22,10 @@ export default function KeyValueList({ kvTitle, entries }: KeyValueListProps) {
   const hasCategories = categories.some((c) => c !== "");
 
   return (
-    <div className="bg-slate-800/40 border border-slate-700 rounded-xl overflow-hidden">
+    <div className="bg-slate-200/40 dark:bg-slate-800/40 border border-slate-300 dark:border-slate-700 rounded-xl overflow-hidden">
       {kvTitle && (
         <div
-          className="px-5 py-3 border-b border-slate-700 font-semibold text-white text-sm"
+          className="px-5 py-3 border-b border-slate-300 dark:border-slate-700 font-semibold text-slate-950 dark:text-white text-sm"
           style={{ background: "linear-gradient(to right, var(--theme-500-10), transparent)" }}
         >
           {kvTitle}
@@ -36,11 +36,11 @@ export default function KeyValueList({ kvTitle, entries }: KeyValueListProps) {
         ? categories.map((cat) => (
             <div key={cat}>
               {cat && (
-                <div className="px-5 py-2 bg-slate-900/40 border-b border-t border-slate-700/60">
-                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{cat}</span>
+                <div className="px-5 py-2 bg-slate-100/40 dark:bg-slate-900/40 border-b border-t border-slate-300/60 dark:border-slate-700/60">
+                  <span className="text-xs font-semibold text-slate-500 dark:text-slate-500 uppercase tracking-wide">{cat}</span>
                 </div>
               )}
-              <dl className="divide-y divide-slate-700/60">
+              <dl className="divide-y divide-slate-300/60 dark:divide-slate-700/60">
                 {grouped[cat].map((entry, i) => (
                   <Row key={i} entry={entry} />
                 ))}
@@ -48,7 +48,7 @@ export default function KeyValueList({ kvTitle, entries }: KeyValueListProps) {
             </div>
           ))
         : (
-            <dl className="divide-y divide-slate-700/60">
+            <dl className="divide-y divide-slate-300/60 dark:divide-slate-700/60">
               {entries.map((entry, i) => (
                 <Row key={i} entry={entry} />
               ))}
@@ -60,9 +60,9 @@ export default function KeyValueList({ kvTitle, entries }: KeyValueListProps) {
 
 function Row({ entry }: { entry: KeyValueEntry }) {
   return (
-    <div className="flex items-start justify-between gap-4 px-5 py-3 hover:bg-slate-800/40 transition-colors">
-      <dt className="text-xs font-medium text-slate-500 uppercase tracking-wide min-w-0 shrink-0 w-1/3">{entry.key}</dt>
-      <dd className="text-sm text-slate-200 text-right leading-relaxed">{entry.value}</dd>
+    <div className="flex items-start justify-between gap-4 px-5 py-3 hover:bg-slate-200/40 dark:hover:bg-slate-800/40 transition-colors">
+      <dt className="text-xs font-medium text-slate-500 dark:text-slate-500 uppercase tracking-wide min-w-0 shrink-0 w-1/3">{entry.key}</dt>
+      <dd className="text-sm text-slate-800 dark:text-slate-200 text-right leading-relaxed">{entry.value}</dd>
     </div>
   );
 }

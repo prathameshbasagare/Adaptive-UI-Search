@@ -23,11 +23,11 @@ export default function ChatMessage({ message }: ChatMessageProps) {
     <div className={`flex gap-2.5 ${isUser ? "flex-row-reverse" : "flex-row"}`}>
       <div
         className={`shrink-0 w-7 h-7 rounded-full flex items-center justify-center mt-0.5 ${
-          isUser ? "bg-violet-500" : "bg-slate-700"
+          isUser ? "bg-violet-500" : "bg-slate-300 dark:bg-slate-700"
         }`}
       >
         {isUser ? (
-          <User size={14} className="text-white" />
+          <User size={14} className="text-slate-950 dark:text-white" />
         ) : (
           <Bot size={14} className="text-violet-300" />
         )}
@@ -37,13 +37,13 @@ export default function ChatMessage({ message }: ChatMessageProps) {
         <div
           className={`px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${
             isUser
-              ? "bg-violet-600 text-white rounded-tr-sm"
-              : "bg-slate-700/80 text-slate-200 rounded-tl-sm"
+              ? "bg-violet-600 text-slate-950 dark:text-white rounded-tr-sm"
+              : "bg-slate-300/80 dark:bg-slate-700/80 text-slate-800 dark:text-slate-200 rounded-tl-sm"
           }`}
         >
           {message.content}
         </div>
-        <span className="text-xs text-slate-500 px-1">{formatTime(message.timestamp)}</span>
+        <span className="text-xs text-slate-500 dark:text-slate-500 px-1">{formatTime(message.timestamp)}</span>
       </div>
     </div>
   );

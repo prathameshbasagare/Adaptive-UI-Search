@@ -41,10 +41,10 @@ export default function ImageGallery({ query, count = 6, caption }: ImageGallery
   if (loading) {
     return (
       <div className="space-y-2">
-        {caption && <p className="text-sm text-slate-400 mb-3">{caption}</p>}
+        {caption && <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">{caption}</p>}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {Array.from({ length: count }).map((_, i) => (
-            <div key={i} className="aspect-video bg-slate-800 rounded-xl animate-pulse" />
+            <div key={i} className="aspect-video bg-slate-200 dark:bg-slate-800 rounded-xl animate-pulse" />
           ))}
         </div>
       </div>
@@ -54,18 +54,18 @@ export default function ImageGallery({ query, count = 6, caption }: ImageGallery
   if (error) {
     return (
       <div
-        className="flex flex-col items-center gap-3 py-10 rounded-xl border border-dashed border-slate-700 text-center"
+        className="flex flex-col items-center gap-3 py-10 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-center"
       >
-        <Camera size={32} className="text-slate-600" />
-        <p className="text-sm text-slate-500">{error}</p>
-        <p className="text-xs text-slate-600">Add your PEXELS_API_KEY to enable image search.</p>
+        <Camera size={32} className="text-slate-400 dark:text-slate-600" />
+        <p className="text-sm text-slate-500 dark:text-slate-500">{error}</p>
+        <p className="text-xs text-slate-400 dark:text-slate-600">Add your PEXELS_API_KEY to enable image search.</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-3">
-      {caption && <p className="text-sm text-slate-400">{caption}</p>}
+      {caption && <p className="text-sm text-slate-600 dark:text-slate-400">{caption}</p>}
       <div className="columns-2 sm:columns-3 gap-3 space-y-3">
         {photos.map((photo, i) => (
           <div key={i} className="group relative overflow-hidden rounded-xl break-inside-avoid">
@@ -81,7 +81,7 @@ export default function ImageGallery({ query, count = 6, caption }: ImageGallery
                 href={photo.photographerUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1 text-white text-xs font-medium hover:underline"
+                className="flex items-center gap-1 text-slate-950 dark:text-white text-xs font-medium hover:underline"
               >
                 <Camera size={11} />
                 {photo.photographer}
@@ -91,9 +91,9 @@ export default function ImageGallery({ query, count = 6, caption }: ImageGallery
           </div>
         ))}
       </div>
-      <p className="text-xs text-slate-600 text-right">
+      <p className="text-xs text-slate-400 dark:text-slate-600 text-right">
         Photos by{" "}
-        <a href="https://www.pexels.com" target="_blank" rel="noopener noreferrer" className="hover:text-slate-500">
+        <a href="https://www.pexels.com" target="_blank" rel="noopener noreferrer" className="hover:text-slate-500 dark:hover:text-slate-500">
           Pexels
         </a>
       </p>

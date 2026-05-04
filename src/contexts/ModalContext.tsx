@@ -68,15 +68,15 @@ function ModalOverlay({ title, body, onClose }: { title: string; body: ReactNode
 
       {/* Panel */}
       <div
-        className="relative z-10 w-full max-w-2xl max-h-[85vh] bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl flex flex-col animate-fadeIn"
+        className="relative z-10 w-full max-w-2xl max-h-[85vh] bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-2xl shadow-2xl flex flex-col animate-fadeIn"
         style={{ boxShadow: "0 25px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05)" }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 shrink-0">
-          <h2 className="font-semibold text-white text-base">{title}</h2>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 shrink-0">
+          <h2 className="font-semibold text-slate-950 dark:text-white text-base">{title}</h2>
           <button
             onClick={onClose}
-            className="text-slate-500 hover:text-slate-200 transition-colors w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-800"
+            className="text-slate-500 dark:text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800"
             aria-label="Close"
           >
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>

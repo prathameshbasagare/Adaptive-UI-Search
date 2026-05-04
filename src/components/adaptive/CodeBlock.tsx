@@ -4,8 +4,9 @@
 
 import { useState } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { vscDarkPlus, vs } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { Copy, Check } from "lucide-react";
+import { useThemeStore } from "@/hooks/useThemeStore";
 import type { CodeSnippet } from "@/lib/types";
 
 interface CodeBlockProps {
@@ -20,29 +21,29 @@ function CopyButton({ code }: { code: string }) {
   return (
     <button
       onClick={async () => { await navigator.clipboard.writeText(code); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
-      className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition-colors px-2 py-1 rounded hover:bg-slate-700"
+      className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white transition-colors px-2 py-1 rounded hover:bg-slate-300 dark:hover:bg-slate-700"
     >
       {copied ? <><Check size={13} className="text-emerald-400" /><span className="text-emerald-400">Copied</span></> : <><Copy size={13} /><span>Copy</span></>}
     </button>
   );
 }
 
-const SHL_PROPS = {
-  style: vscDarkPlus,
-  customStyle: { margin: 0, borderRadius: 0, background: "#0f172a", fontSize: "0.85rem", lineHeight: "1.6", padding: "1.25rem" },
+const getShlProps = (mode: "light" | "dark") => ({
+  style: mode === "light" ? vs : vscDarkPlus,
+  customStyle: { margin: 0, borderRadius: 0, background: mode === "light" ? "#f8fafc" : "#0f172a", fontSize: "0.85rem", lineHeight: "1.6", padding: "1.25rem" },
   showLineNumbers: true,
-  lineNumberStyle: { color: "#475569", minWidth: "2.5em" },
+  lineNumberStyle: { color: mode === "light" ? "#94a3b8" : "#475569", minWidth: "2.5em" },
   wrapLongLines: true,
-};
+});
 
 function SingleBlock({ language = "text", code, title }: { language?: string; code: string; title?: string }) {
   return (
-    <div className="rounded-xl overflow-hidden border border-slate-700">
-      <div className="flex items-center justify-between bg-slate-800 px-4 py-2.5 border-b border-slate-700">
-        <span className="text-xs font-mono text-slate-400 uppercase tracking-wide">{title ?? language}</span>
+    <div className="rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700">
+      <div className="flex items-center justify-between bg-slate-200 dark:bg-slate-800 px-4 py-2.5 border-b border-slate-300 dark:border-slate-700">
+        <span className="text-xs font-mono text-slate-600 dark:text-slate-400 uppercase tracking-wide">{title ?? language}</span>
         <CopyButton code={code} />
       </div>
-      <SyntaxHighlighter language={language} {...SHL_PROPS}>{code}</SyntaxHighlighter>
+      <SyntaxHighlighter language={language} {...getShlProps(useThemeStore().mode)}>{code}</SyntaxHighlighter>
     </div>
   );
 }
@@ -51,8 +52,8 @@ function MultiBlock({ snippets }: { snippets: CodeSnippet[] }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const active = snippets[activeIndex];
   return (
-    <div className="rounded-xl overflow-hidden border border-slate-700">
-      <div className="flex items-center justify-between bg-slate-800 border-b border-slate-700 pr-3">
+    <div className="rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700">
+      <div className="flex items-center justify-between bg-slate-200 dark:bg-slate-800 border-b border-slate-300 dark:border-slate-700 pr-3">
         <div className="flex overflow-x-auto">
           {snippets.map((s, i) => (
             <button
@@ -70,7 +71,7 @@ function MultiBlock({ snippets }: { snippets: CodeSnippet[] }) {
         </div>
         {active && <CopyButton code={active.code} />}
       </div>
-      {active && <SyntaxHighlighter language={active.language} {...SHL_PROPS}>{active.code}</SyntaxHighlighter>}
+      {active && <SyntaxHighlighter language={active.language} {...getShlProps(useThemeStore().mode)}>{active.code}</SyntaxHighlighter>}
     </div>
   );
 }

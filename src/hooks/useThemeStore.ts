@@ -16,19 +16,34 @@ export const THEME_COLORS: Record<ThemeName, { hex: string; label: string }> = {
 
 interface ThemeStore {
   theme: ThemeName;
+  mode: "light" | "dark";
   setTheme: (t: ThemeName) => void;
+  toggleMode: () => void;
 }
 
 export const useThemeStore = create<ThemeStore>()(
   persist(
     (set) => ({
       theme: "violet",
+      mode: "dark",
       setTheme: (theme) => {
         set({ theme });
-        // Apply to DOM immediately
         if (typeof document !== "undefined") {
           document.body.setAttribute("data-theme", theme);
         }
+      },
+      toggleMode: () => {
+        set((state) => {
+          const nextMode = state.mode === "light" ? "dark" : "light";
+          if (typeof document !== "undefined") {
+            if (nextMode === "dark") {
+              document.documentElement.classList.add("dark");
+            } else {
+              document.documentElement.classList.remove("dark");
+            }
+          }
+          return { mode: nextMode };
+        });
       },
     }),
     { name: "adaptive-ui-theme" }
@@ -44,9 +59,15 @@ export function applyPersistedTheme() {
   const stored = localStorage.getItem("adaptive-ui-theme");
   if (stored) {
     try {
-      const parsed = JSON.parse(stored) as { state?: { theme?: string } };
+      const parsed = JSON.parse(stored) as { state?: { theme?: string; mode?: string } };
       const t = parsed?.state?.theme;
+      const m = parsed?.state?.mode;
       if (t) document.body.setAttribute("data-theme", t);
+      if (m === "light") {
+        document.documentElement.classList.remove("dark");
+      } else {
+        document.documentElement.classList.add("dark"); // Default
+      }
     } catch {
       // ignore
     }

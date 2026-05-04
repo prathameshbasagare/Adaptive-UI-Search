@@ -16,8 +16,8 @@ function StarRow({ label, initial }: { label: string; initial: number }) {
   const [hover, setHover] = useState<number | null>(null);
 
   return (
-    <div className="flex items-center justify-between gap-4 py-3 border-b border-slate-700/60 last:border-0">
-      <span className="text-slate-300 text-sm font-medium">{label}</span>
+    <div className="flex items-center justify-between gap-4 py-3 border-b border-slate-300/60 dark:border-slate-700/60 last:border-0">
+      <span className="text-slate-700 dark:text-slate-300 text-sm font-medium">{label}</span>
       <div className="flex items-center gap-1">
         {[1, 2, 3, 4, 5].map((star) => {
           const active = hover !== null ? star <= hover : star <= score;
@@ -39,7 +39,7 @@ function StarRow({ label, initial }: { label: string; initial: number }) {
             </button>
           );
         })}
-        <span className="ml-2 text-xs text-slate-500 w-6 tabular-nums">{score}/5</span>
+        <span className="ml-2 text-xs text-slate-500 dark:text-slate-500 w-6 tabular-nums">{score}/5</span>
       </div>
     </div>
   );
@@ -47,10 +47,10 @@ function StarRow({ label, initial }: { label: string; initial: number }) {
 
 export default function Rating({ ratingTitle, items }: RatingProps) {
   return (
-    <div className="bg-slate-800/40 border border-slate-700 rounded-xl overflow-hidden">
+    <div className="bg-slate-200/40 dark:bg-slate-800/40 border border-slate-300 dark:border-slate-700 rounded-xl overflow-hidden">
       {ratingTitle && (
         <div
-          className="px-5 py-3 border-b border-slate-700 font-semibold text-white text-sm"
+          className="px-5 py-3 border-b border-slate-300 dark:border-slate-700 font-semibold text-slate-950 dark:text-white text-sm"
           style={{ background: "linear-gradient(to right, var(--theme-500-10), transparent)" }}
         >
           {ratingTitle}

@@ -3,6 +3,7 @@
 "use client";
 
 import TextBlock from "./TextBlock";
+import { useThemeStore } from "@/hooks/useThemeStore";
 
 interface DocumentViewProps {
   docTitle?: string;
@@ -11,15 +12,16 @@ interface DocumentViewProps {
 }
 
 export default function DocumentView({ docTitle, docSubtitle, content }: DocumentViewProps) {
+  const { mode } = useThemeStore();
   return (
     <div
-      className="rounded-2xl overflow-hidden border border-slate-700 shadow-xl"
-      style={{ background: "linear-gradient(to bottom, #0f172a, #020617)" }}
+      className="rounded-2xl overflow-hidden border border-slate-300 dark:border-slate-700 shadow-xl"
+      style={{ background: mode === "light" ? "linear-gradient(to bottom, #f8fafc, #f1f5f9)" : "linear-gradient(to bottom, #0f172a, #020617)" }}
     >
       {/* Cover */}
       {(docTitle || docSubtitle) && (
         <div
-          className="relative px-10 py-12 border-b border-slate-800 text-center overflow-hidden"
+          className="relative px-10 py-12 border-b border-slate-200 dark:border-slate-800 text-center overflow-hidden"
           style={{ background: "linear-gradient(135deg, var(--theme-500-10), transparent 70%)" }}
         >
           {/* Decorative rings */}
@@ -37,8 +39,8 @@ export default function DocumentView({ docTitle, docSubtitle, content }: Documen
               className="inline-block w-10 h-1 rounded-full mx-auto mb-4"
               style={{ backgroundColor: "var(--theme-500)" }}
             />
-            {docTitle && <h1 className="text-3xl font-bold text-white">{docTitle}</h1>}
-            {docSubtitle && <p className="text-slate-400 text-base">{docSubtitle}</p>}
+            {docTitle && <h1 className="text-3xl font-bold text-slate-950 dark:text-white">{docTitle}</h1>}
+            {docSubtitle && <p className="text-slate-600 dark:text-slate-400 text-base">{docSubtitle}</p>}
           </div>
         </div>
       )}

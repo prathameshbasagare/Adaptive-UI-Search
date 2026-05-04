@@ -27,16 +27,16 @@ export default function Steps({ steps }: StepsProps) {
               {index + 1}
             </div>
             {index < steps.length - 1 && (
-              <div className="w-px flex-1 bg-slate-700/60 min-h-4 mt-1" />
+              <div className="w-px flex-1 bg-slate-300/60 dark:bg-slate-700/60 min-h-4 mt-1" />
             )}
           </div>
           <div className={`pb-6 flex-1 min-w-0 ${index === steps.length - 1 ? "pb-0" : ""}`}>
-            <h3 className="font-semibold text-white text-sm mb-1.5 pt-1 leading-snug">{step.title}</h3>
-            <p className="text-slate-400 text-sm leading-relaxed mb-3">{step.description}</p>
+            <h3 className="font-semibold text-slate-950 dark:text-white text-sm mb-1.5 pt-1 leading-snug">{step.title}</h3>
+            <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">{step.description}</p>
             {step.code && (
-              <div className="rounded-lg overflow-hidden border border-slate-700">
-                <div className="bg-slate-800 px-3 py-1.5 border-b border-slate-700">
-                  <span className="text-xs font-mono text-slate-500 uppercase tracking-wide">{step.language ?? "code"}</span>
+              <div className="rounded-lg overflow-hidden border border-slate-300 dark:border-slate-700">
+                <div className="bg-slate-200 dark:bg-slate-800 px-3 py-1.5 border-b border-slate-300 dark:border-slate-700">
+                  <span className="text-xs font-mono text-slate-500 dark:text-slate-500 uppercase tracking-wide">{step.language ?? "code"}</span>
                 </div>
                 <SyntaxHighlighter
                   language={step.language ?? "bash"}

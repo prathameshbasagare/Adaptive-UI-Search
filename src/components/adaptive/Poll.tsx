@@ -29,13 +29,13 @@ export default function Poll({ pollQuestion, options }: PollProps) {
   }
 
   return (
-    <div className="bg-slate-800/40 border border-slate-700 rounded-xl overflow-hidden">
+    <div className="bg-slate-200/40 dark:bg-slate-800/40 border border-slate-300 dark:border-slate-700 rounded-xl overflow-hidden">
       <div
-        className="px-5 py-4 border-b border-slate-700"
+        className="px-5 py-4 border-b border-slate-300 dark:border-slate-700"
         style={{ background: "linear-gradient(to right, var(--theme-500-10), transparent)" }}
       >
-        <p className="font-semibold text-white text-sm leading-snug">{pollQuestion}</p>
-        {hasVoted && <p className="text-xs text-slate-500 mt-0.5">Thanks for voting! Live results:</p>}
+        <p className="font-semibold text-slate-950 dark:text-white text-sm leading-snug">{pollQuestion}</p>
+        {hasVoted && <p className="text-xs text-slate-500 dark:text-slate-500 mt-0.5">Thanks for voting! Live results:</p>}
       </div>
 
       <div className="px-5 py-4 space-y-3">
@@ -65,7 +65,7 @@ export default function Poll({ pollQuestion, options }: PollProps) {
                 }}
               />
               <div className="relative flex items-center justify-between px-4 py-3 gap-3">
-                <span className={`text-sm ${isSelected ? "text-white font-medium" : "text-slate-300"}`}>
+                <span className={`text-sm ${isSelected ? "text-slate-950 dark:text-white font-medium" : "text-slate-700 dark:text-slate-300"}`}>
                   {isWinner && hasVoted && <span className="mr-1.5">🏆</span>}
                   {opt.label}
                 </span>
@@ -84,7 +84,7 @@ export default function Poll({ pollQuestion, options }: PollProps) {
       </div>
 
       {!hasVoted && (
-        <p className="px-5 pb-4 text-xs text-slate-600">Click an option to vote</p>
+        <p className="px-5 pb-4 text-xs text-slate-400 dark:text-slate-600">Click an option to vote</p>
       )}
     </div>
   );

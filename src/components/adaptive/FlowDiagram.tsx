@@ -3,6 +3,7 @@
 "use client";
 
 import type { FlowNode, FlowEdge } from "@/lib/types";
+import { useThemeStore } from "@/hooks/useThemeStore";
 
 interface FlowDiagramProps {
   flowTitle?: string;
@@ -19,7 +20,7 @@ function getCenter(node: FlowNode): [number, number] {
   return [node.x + NODE_W / 2, node.y + h / 2];
 }
 
-function NodeShape({ node }: { node: FlowNode }) {
+function NodeShape({ node, mode }: { node: FlowNode, mode: "light" | "dark" }) {
   const cx = node.x;
   const cy = node.y;
 
@@ -36,7 +37,7 @@ function NodeShape({ node }: { node: FlowNode }) {
           stroke="var(--theme-500-60)"
           strokeWidth="1.5"
         />
-        <text x={mx} y={my + 4} textAnchor="middle" fill="#e2e8f0" fontSize="11" fontFamily="system-ui">
+        <text x={mx} y={my + 4} textAnchor="middle" fill={mode === "light" ? "#0f172a" : "#e2e8f0"} fontSize="11" fontFamily="system-ui">
           {node.label}
         </text>
       </>
@@ -55,7 +56,7 @@ function NodeShape({ node }: { node: FlowNode }) {
           stroke="var(--theme-500)"
           strokeWidth="1.5"
         />
-        <text x={cx + NODE_W / 2} y={cy + r + 4} textAnchor="middle" fill="#e2e8f0" fontSize="11" fontFamily="system-ui">
+        <text x={cx + NODE_W / 2} y={cy + r + 4} textAnchor="middle" fill={mode === "light" ? "#0f172a" : "#e2e8f0"} fontSize="11" fontFamily="system-ui">
           {node.label}
         </text>
       </>
@@ -75,7 +76,7 @@ function NodeShape({ node }: { node: FlowNode }) {
         stroke="var(--theme-500-40)"
         strokeWidth="1.5"
       />
-      <text x={cx + NODE_W / 2} y={cy + NODE_H / 2 + 4} textAnchor="middle" fill="#e2e8f0" fontSize="11" fontFamily="system-ui">
+      <text x={cx + NODE_W / 2} y={cy + NODE_H / 2 + 4} textAnchor="middle" fill={mode === "light" ? "#0f172a" : "#e2e8f0"} fontSize="11" fontFamily="system-ui">
         {node.label}
       </text>
     </>
@@ -110,16 +111,17 @@ function EdgePath({ edge, nodes }: { edge: FlowEdge; nodes: FlowNode[] }) {
 }
 
 export default function FlowDiagram({ flowTitle, nodes, edges }: FlowDiagramProps) {
+  const { mode } = useThemeStore();
   if (!nodes.length) return null;
 
   const maxX = Math.max(...nodes.map((n) => n.x + NODE_W)) + 20;
   const maxY = Math.max(...nodes.map((n) => n.y + (n.shape === "diamond" ? DIAMOND_H : NODE_H))) + 20;
 
   return (
-    <div className="bg-slate-900/60 border border-slate-700 rounded-xl overflow-hidden">
+    <div className="bg-slate-100/60 dark:bg-slate-900/60 border border-slate-300 dark:border-slate-700 rounded-xl overflow-hidden">
       {flowTitle && (
         <div
-          className="px-5 py-3 border-b border-slate-700 font-semibold text-white text-sm"
+          className="px-5 py-3 border-b border-slate-300 dark:border-slate-700 font-semibold text-slate-950 dark:text-white text-sm"
           style={{ background: "linear-gradient(to right, var(--theme-500-10), transparent)" }}
         >
           {flowTitle}
@@ -141,7 +143,7 @@ export default function FlowDiagram({ flowTitle, nodes, edges }: FlowDiagramProp
             <EdgePath key={i} edge={edge} nodes={nodes} />
           ))}
           {nodes.map((node) => (
-            <NodeShape key={node.id} node={node} />
+            <NodeShape key={node.id} node={node} mode={mode} />
           ))}
         </svg>
       </div>

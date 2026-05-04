@@ -69,10 +69,10 @@ export default function Features() {
       <div className="max-w-6xl mx-auto">
         {/* Section header */}
         <div className="text-center mb-16">
-          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+          <h2 className="text-3xl sm:text-4xl font-bold text-slate-950 dark:text-white mb-4">
             Everything your search needs
           </h2>
-          <p className="text-slate-400 text-lg max-w-xl mx-auto leading-relaxed">
+          <p className="text-slate-600 dark:text-slate-400 text-lg max-w-xl mx-auto leading-relaxed">
             Not just answers — intelligent, structured interfaces generated on the fly.
           </p>
         </div>
@@ -86,17 +86,17 @@ export default function Features() {
             return (
               <div
                 key={feature.title}
-                className="bg-slate-800/30 border border-slate-700/60 rounded-2xl p-6 hover:border-slate-600 hover:bg-slate-800/50 transition-all duration-200 group"
+                className="bg-slate-200/30 dark:bg-slate-800/30 border border-slate-300/60 dark:border-slate-700/60 rounded-2xl p-6 hover:border-slate-400 dark:hover:border-slate-600 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-all duration-200 group"
               >
                 <div
                   className={`w-11 h-11 rounded-xl border flex items-center justify-center mb-4 ${colorClass}`}
                 >
                   <Icon size={20} />
                 </div>
-                <h3 className="font-semibold text-white text-base mb-2 group-hover:text-violet-200 transition-colors">
+                <h3 className="font-semibold text-slate-950 dark:text-white text-base mb-2 group-hover:text-violet-200 transition-colors">
                   {feature.title}
                 </h3>
-                <p className="text-slate-500 text-sm leading-relaxed">{feature.description}</p>
+                <p className="text-slate-500 dark:text-slate-500 text-sm leading-relaxed">{feature.description}</p>
               </div>
             );
           })}

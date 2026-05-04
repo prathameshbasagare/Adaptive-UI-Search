@@ -15,10 +15,10 @@ function ProgressBar({ item, animate, index }: { item: ProgressItem; animate: bo
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between text-sm">
-        <span className="text-slate-300 font-medium">{item.label}</span>
-        <span className="text-slate-400 font-mono text-xs tabular-nums">{clamped}%</span>
+        <span className="text-slate-700 dark:text-slate-300 font-medium">{item.label}</span>
+        <span className="text-slate-600 dark:text-slate-400 font-mono text-xs tabular-nums">{clamped}%</span>
       </div>
-      <div className="h-2.5 bg-slate-800 rounded-full overflow-hidden border border-slate-700/60">
+      <div className="h-2.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden border border-slate-300/60 dark:border-slate-700/60">
         <div
           className="h-full rounded-full transition-all duration-700 ease-out"
           style={{
@@ -48,8 +48,8 @@ export default function ProgressBars({ progressTitle, items }: ProgressBarsProps
   }, []);
 
   return (
-    <div ref={ref} className="bg-slate-800/40 border border-slate-700 rounded-xl p-5 space-y-4">
-      {progressTitle && <h3 className="font-semibold text-white text-sm">{progressTitle}</h3>}
+    <div ref={ref} className="bg-slate-200/40 dark:bg-slate-800/40 border border-slate-300 dark:border-slate-700 rounded-xl p-5 space-y-4">
+      {progressTitle && <h3 className="font-semibold text-slate-950 dark:text-white text-sm">{progressTitle}</h3>}
       {items.map((item, index) => (
         <ProgressBar key={index} item={item} animate={animate} index={index} />
       ))}
