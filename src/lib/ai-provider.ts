@@ -158,7 +158,7 @@ async function callGeminiModel(
     history: conversationHistory,
     generationConfig: {
       temperature: 0.4,
-      maxOutputTokens: Math.min(4096, modelConfig.maxOutput),
+      maxOutputTokens: modelConfig.maxOutput,
     },
   });
 
@@ -203,7 +203,7 @@ async function callOpenRouterModel(
       model: modelConfig.routerId ?? modelConfig.id,
       messages,
       temperature: 0.4,
-      max_tokens: Math.min(4096, modelConfig.maxOutput),
+      max_tokens: modelConfig.maxOutput,
     }),
   });
 
