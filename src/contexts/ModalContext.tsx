@@ -57,7 +57,6 @@ function ModalOverlay({ title, body, onClose }: { title: string; body: ReactNode
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center p-4"
       onKeyDown={handleKey}
-      // eslint-disable-next-line jsx-a11y/no-autofocus
       tabIndex={-1}
     >
       {/* Backdrop */}

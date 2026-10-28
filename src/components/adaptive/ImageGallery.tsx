@@ -26,16 +26,25 @@ export default function ImageGallery({ query, count = 6, caption }: ImageGallery
 
   useEffect(() => {
     if (!query) return;
-    setLoading(true);
-    setError(null);
+    let ignore = false;
     fetch(`/api/images?query=${encodeURIComponent(query)}&count=${count}`)
       .then((r) => r.json())
       .then((data) => {
+        if (ignore) return;
         if (data.error) throw new Error(data.error);
         setPhotos(data.photos ?? []);
+        setLoading(false);
       })
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
+      .catch((e) => {
+        if (!ignore) {
+          setError(e.message);
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
   }, [query, count]);
 
   if (loading) {

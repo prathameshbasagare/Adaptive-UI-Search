@@ -6,10 +6,9 @@ import { useRef, useEffect, useState, FormEvent } from "react";
 import { X, Send, Loader2, Trash2, Sparkles } from "lucide-react";
 import { useChatStore } from "@/hooks/useChatStore";
 import ChatMessage from "./ChatMessage";
-import type { AdaptiveUIResponse } from "@/lib/types";
 
 export default function ChatPanel() {
-  const { messages, isChatOpen, isLoading, toggleChat, addMessage, addTab, setLoading, clearMessages } =
+  const { messages, isChatOpen, isLoading, toggleChat, sendQuery, clearMessages } =
     useChatStore();
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -31,53 +30,7 @@ export default function ChatPanel() {
     if (!query || isLoading) return;
 
     setInput("");
-    addMessage({ role: "user", content: query });
-    setLoading(true);
-
-    // Build conversation history from existing messages for AI context
-    const history = messages
-      .filter((m) => m.role === "user" || m.role === "assistant")
-      .map((m) => ({
-        role: m.role === "user" ? ("user" as const) : ("model" as const),
-        parts: [{ text: m.content }],
-      }));
-
-    try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query, history }),
-      });
-
-      const data: AdaptiveUIResponse | { error: string } = await res.json();
-
-      if (!res.ok || "error" in data) {
-        const errMsg = "error" in data ? data.error : "Something went wrong. Please try again.";
-        addMessage({ role: "assistant", content: `Error: ${errMsg}` });
-        return;
-      }
-
-      const adaptiveData = data as AdaptiveUIResponse;
-
-      addMessage({
-        role: "assistant",
-        content: adaptiveData.summary ?? `Generated: ${adaptiveData.tabTitle}`,
-        adaptiveResponse: adaptiveData,
-      });
-
-      addTab({
-        title: adaptiveData.tabTitle,
-        query,
-        response: adaptiveData,
-      });
-    } catch {
-      addMessage({
-        role: "assistant",
-        content: "Network error. Please check your connection and try again.",
-      });
-    } finally {
-      setLoading(false);
-    }
+    await sendQuery(query);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {

@@ -1,8 +1,11 @@
 // File: ./src/lib/types.ts
 
+export type LayoutStyle = "bento" | "dashboard" | "docs" | "split" | "standard";
+
 export type ComponentType =
   | "text"
   | "cards"
+  | "bento_grid"
   | "chart"
   | "code"
   | "timeline"
@@ -35,6 +38,23 @@ export interface CardItem {
   badge?: string;
   icon?: string;
   /** Optional markdown content shown in a modal on click */
+  details?: string;
+}
+
+// ── bento_grid ───────────────────────────────────────────────────────────────
+
+export interface BentoItem {
+  title: string;
+  body: string;
+  badge?: string;
+  icon?: string;
+  colSpan?: 1 | 2 | 3;
+  rowSpan?: 1 | 2;
+  statValue?: string;
+  statLabel?: string;
+  trend?: string;
+  trendDirection?: "up" | "down" | "neutral";
+  headerSnippet?: string;
   details?: string;
 }
 
@@ -213,6 +233,15 @@ export interface MapHighlightEntry {
 export interface ComponentDef {
   type: ComponentType;
 
+  // Layout hints (especially for Bento and Dashboard layouts)
+  colSpan?: 1 | 2 | 3 | 4;
+  rowSpan?: 1 | 2;
+  priority?: "hero" | "standard" | "compact";
+
+  // bento_grid
+  bentoTitle?: string;
+  bentoItems?: BentoItem[];
+
   // text / document_view
   content?: string;
 
@@ -317,6 +346,7 @@ export interface ComponentDef {
 export interface AdaptiveUIResponse {
   tabTitle: string;
   summary?: string;
+  layoutStyle?: LayoutStyle;
   components: ComponentDef[];
 }
 
@@ -336,6 +366,7 @@ export interface TabEntry {
   id: string;
   title: string;
   query: string;
+  layoutStyle?: LayoutStyle;
   response: AdaptiveUIResponse;
   createdAt: number;
 }
@@ -346,8 +377,11 @@ export interface ChatStore {
   activeTabId: string | null;
   isChatOpen: boolean;
   isLoading: boolean;
+  sendQuery: (query: string) => Promise<void>;
   addMessage: (msg: Omit<ChatMessage, "id" | "timestamp">) => void;
   addTab: (tab: Omit<TabEntry, "id" | "createdAt">) => void;
+  closeTab: (id: string) => void;
+  updateTabLayout: (tabId: string, layout: LayoutStyle) => void;
   setActiveTab: (id: string) => void;
   toggleChat: () => void;
   setLoading: (v: boolean) => void;
