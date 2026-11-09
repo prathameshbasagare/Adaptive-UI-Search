@@ -14,9 +14,15 @@ export const THEME_COLORS: Record<ThemeName, { hex: string; label: string }> = {
   cyan:    { hex: "#06b6d4", label: "Cyan"    },
 };
 
+export const THEME_STORAGE_KEY = "adaptive-ui-theme";
+
 interface ThemeStore {
   theme: ThemeName;
   setTheme: (t: ThemeName) => void;
+}
+
+function applyTheme(theme: string) {
+  if (typeof document !== "undefined") document.body.setAttribute("data-theme", theme);
 }
 
 export const useThemeStore = create<ThemeStore>()(
@@ -25,30 +31,23 @@ export const useThemeStore = create<ThemeStore>()(
       theme: "violet",
       setTheme: (theme) => {
         set({ theme });
-        // Apply to DOM immediately
-        if (typeof document !== "undefined") {
-          document.body.setAttribute("data-theme", theme);
-        }
+        applyTheme(theme);
       },
     }),
-    { name: "adaptive-ui-theme" }
+    {
+      name: THEME_STORAGE_KEY,
+      skipHydration: true,
+      onRehydrateStorage: () => (state) => {
+        if (state?.theme && state.theme in THEME_COLORS) applyTheme(state.theme);
+      },
+    }
   )
 );
 
-/*
- * Call once in a client component to sync the persisted theme to the DOM.
- * Zustand persist rehydrates on mount, so we read and apply on first render.
+/**
+ * Inline script rendered as the first child of <body>: applies the saved
+ * theme before first paint so there is no flash of the default theme.
  */
-export function applyPersistedTheme() {
-  if (typeof document === "undefined") return;
-  const stored = localStorage.getItem("adaptive-ui-theme");
-  if (stored) {
-    try {
-      const parsed = JSON.parse(stored) as { state?: { theme?: string } };
-      const t = parsed?.state?.theme;
-      if (t) document.body.setAttribute("data-theme", t);
-    } catch {
-      // ignore
-    }
-  }
-}
+export const THEME_BOOTSTRAP_SCRIPT = `(function(){try{var s=JSON.parse(localStorage.getItem(${JSON.stringify(
+  THEME_STORAGE_KEY
+)})||"null");var t=s&&s.state&&s.state.theme;if(${JSON.stringify(Object.keys(THEME_COLORS))}.indexOf(t)>-1)document.body.setAttribute("data-theme",t)}catch(e){}})();`;

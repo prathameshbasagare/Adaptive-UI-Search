@@ -160,9 +160,18 @@ body[data-theme="cyan"] {
 
 /* ── Flow diagram SVG arrows ───────────────────────────────────────────────── */
 
-.flow-edge {
-  stroke: var(--theme-500-60);
-  stroke-width: 1.5;
-  fill: none;
-  marker-end: url(#arrowhead);
+
+/* ── Marquee (showcase) ────────────────────────────────────────────────────── */
+
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+.marquee-track {
+  animation: marquee 40s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track { animation: none; }
 }

@@ -6,7 +6,10 @@ import { MessageCircle } from "lucide-react";
 import { useChatStore } from "@/hooks/useChatStore";
 
 export default function FloatingChatButton() {
-  const { isChatOpen, isLoading, toggleChat, messages } = useChatStore();
+  const isChatOpen = useChatStore((s) => s.isChatOpen);
+  const isLoading = useChatStore((s) => s.isLoading);
+  const toggleChat = useChatStore((s) => s.toggleChat);
+  const hasMessages = useChatStore((s) => s.messages.length > 0);
 
   if (isChatOpen) return null;
 
@@ -23,7 +26,7 @@ export default function FloatingChatButton() {
       aria-label="Open chat"
     >
       <MessageCircle size={22} className="text-white" />
-      {messages.length > 0 && (
+      {hasMessages && (
         <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-400 rounded-full border-2 border-slate-900" />
       )}
       <span className="absolute right-16 top-1/2 -translate-y-1/2 bg-slate-800 text-slate-200 text-xs font-medium px-2.5 py-1.5 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none shadow border border-slate-700">

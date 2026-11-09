@@ -1,481 +1,460 @@
 // File: ./src/lib/ai-provider.ts
 
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import type { AdaptiveUIResponse } from "./types";
+import { GoogleGenerativeAI, type Content } from "@google/generative-ai";
+import { componentPromptSchemas, parseComponent, type AdaptiveUIResponse, type ComponentDef } from "./schemas";
+import { ComponentStreamScanner, extractJSON } from "./json-stream";
+import { normalizeLayout, validateResponse } from "./validate";
+import { envInt } from "./rate-limit";
+import type { HistoryTurn, StreamEvent } from "./types";
 
 // ── Model registry ───────────────────────────────────────────────────────────
-// Ranked strongest → weakest. The fallback loop tries models in this order,
-// skipping any whose provider API key is not configured.
+// Ranked strongest → weakest within each provider. Providers are tried in
+// PROVIDER_PRIORITY order; see buildAttemptPlan for how attempts are chosen.
 
 type Provider = "custom" | "gemini" | "openrouter";
 
 interface ModelConfig {
   id: string;
   provider: Provider;
-  /** Custom endpoint or OpenRouter-specific model ID */
-  routerId?: string;
-  contextWindow: number;
+  /** Model name sent to the API (defaults to id). */
+  apiModel?: string;
   maxOutput: number;
+  /** Gemini API: Gemma models reject systemInstruction and JSON mode. */
+  nativeSystemPrompt?: boolean;
+  jsonMode?: boolean;
 }
 
-const MODEL_REGISTRY: ModelConfig[] = [
-  // ── Custom Base URL models (takes highest priority when BASE_URL & API_KEY are configured) ──
-  { id: "custom/auto", provider: "custom", routerId: "auto", contextWindow: 128_000, maxOutput: 8_192 },
-  { id: "custom/claude-sonnet-4-5", provider: "custom", routerId: "claude-sonnet-4-5", contextWindow: 128_000, maxOutput: 8_192 },
-  { id: "custom/gemini-3.8-flash", provider: "custom", routerId: "gemini-3.8-flash", contextWindow: 128_000, maxOutput: 8_192 },
-  { id: "custom/qwen3.8-max", provider: "custom", routerId: "qwen3.8-max", contextWindow: 128_000, maxOutput: 8_192 },
+const PROVIDER_PRIORITY: Provider[] = ["custom", "openrouter", "gemini"];
 
-  // ── Tier 1: Flagship models ──
-  { id: "openrouter/owl-alpha", provider: "openrouter", routerId: "openrouter/owl-alpha", contextWindow: 128_000, maxOutput: 8_192 },
-  { id: "gemini-2.5-flash", provider: "gemini", contextWindow: 1_048_576, maxOutput: 65_535 },
-  { id: "gemma-4-31b-it", provider: "gemini", contextWindow: 256_000, maxOutput: 8_192 },
-  { id: "gemma-4-26b-a4b-it", provider: "gemini", contextWindow: 256_000, maxOutput: 8_192 },
+function customModels(): ModelConfig[] {
+  const list = (process.env.CUSTOM_MODELS || "auto,claude-sonnet-4-5,gemini-3.8-flash,qwen3.8-max")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  // JSON mode is opt-in: some OpenAI-compatible gateways buffer the entire
+  // response when response_format is set, which defeats streaming.
+  const jsonMode = process.env.CUSTOM_JSON_MODE === "true";
+  return list.map((m) => ({ id: `custom/${m}`, provider: "custom", apiModel: m, maxOutput: 8_192, jsonMode }));
+}
 
-  // ── Tier 2: Strong free models ──
-  { id: "gemma-4-31b-it-or", provider: "openrouter", routerId: "google/gemma-4-31b-it:free", contextWindow: 128_000, maxOutput: 8_192 },
-  { id: "gemma-3-27b-it", provider: "gemini", contextWindow: 128_000, maxOutput: 8_192 },
-  { id: "nemotron-3-super", provider: "openrouter", routerId: "nvidia/nemotron-3-super:free", contextWindow: 32_000, maxOutput: 8_192 },
+const STATIC_REGISTRY: ModelConfig[] = [
+  { id: "openrouter/owl-alpha", provider: "openrouter", apiModel: "openrouter/owl-alpha", maxOutput: 8_192, jsonMode: true },
+  { id: "gemma-4-31b-it-or", provider: "openrouter", apiModel: "google/gemma-4-31b-it:free", maxOutput: 8_192 },
+  { id: "nemotron-3-super", provider: "openrouter", apiModel: "nvidia/nemotron-3-super:free", maxOutput: 8_192 },
 
-  // ── Tier 3: Lite / smaller models ──
-  { id: "gemini-3.1-flash-lite-preview", provider: "gemini", contextWindow: 1_048_576, maxOutput: 65_535 },
-  { id: "gemini-2.5-flash-lite", provider: "gemini", contextWindow: 1_048_576, maxOutput: 65_535 },
-  { id: "gemma-3-12b-it", provider: "gemini", contextWindow: 128_000, maxOutput: 8_192 },
+  { id: "gemini-2.5-flash", provider: "gemini", maxOutput: 65_535, nativeSystemPrompt: true, jsonMode: true },
+  { id: "gemini-3.1-flash-lite-preview", provider: "gemini", maxOutput: 65_535, nativeSystemPrompt: true, jsonMode: true },
+  { id: "gemini-2.5-flash-lite", provider: "gemini", maxOutput: 65_535, nativeSystemPrompt: true, jsonMode: true },
+  { id: "gemma-4-31b-it", provider: "gemini", maxOutput: 8_192 },
+  { id: "gemma-4-26b-a4b-it", provider: "gemini", maxOutput: 8_192 },
+  { id: "gemma-3-27b-it", provider: "gemini", maxOutput: 8_192 },
 ];
 
-/** Maximum number of models to try before giving up */
-const MAX_ATTEMPTS = 3;
+/** Upper bound on output tokens we ever request; responses are a few KB of JSON. */
+const OUTPUT_TOKEN_CAP = 16_384;
 
-// ── Shared constants ─────────────────────────────────────────────────────────
-
-const ALL_TYPES = [
-  "text", "cards", "bento_grid", "chart", "code",
-  "timeline", "table", "stat_cards", "progress",
-  "accordion", "tabs_content", "quote", "steps", "comparison",
-  "rating", "quiz", "image_gallery", "key_value", "terminal",
-  "flashcard", "color_palette", "poll", "rating_grid",
-  "flow_diagram", "map_highlight", "document_view",
-];
+// ── System prompt ────────────────────────────────────────────────────────────
 
 const SYSTEM_PROMPT = `You are a Principal UI/UX Architect and Visual Interface Designer. Respond ONLY with a valid JSON object. No prose. No markdown fences. No explanation.
 
 CRITICAL DESIGN PHILOSOPHY:
-- YOU ARE A SENIOR UI/UX ENGINEER DESIGNING A HIGH-END WEB CANVAS.
-- NEVER default to plain text walls. Plain text is a last resort. If information can be structured visually, YOU MUST USE A RICH COMPONENT.
-- Text blocks (type: "text") are restricted to at most ONE brief introductory framing block (max 2-3 sentences). Never output multiple text blocks.
-- Transform raw thoughts into visual artifacts:
-  * Overviews / Feature highlights → "bento_grid" with emoji icons, badges, stats, and code snippets
-  * Numerical metrics & KPIs → "stat_cards" with trend percentage & direction (up/down/neutral)
-  * Data trends & comparisons → "chart" (bar, line, or doughnut)
-  * Two-sided showdowns or pros/cons → "comparison" + "table"
-  * Step-by-step guides & workflows → "steps" or "flow_diagram"
-  * Command line & setup → "terminal" + "code"
-  * Deep specifications & attributes → "key_value"
-  * Expert warnings, callouts & tips → "quote" (tip/warning/info)
-  * Multi-attribute scoring → "rating_grid" or "rating"
-  * FAQs & collapsible details → "accordion"
+- NEVER default to plain text walls. If information can be structured visually, USE A RICH COMPONENT.
+- At most ONE brief "text" block (2-3 sentences). Never output multiple text blocks.
+- Overviews / features → "bento_grid"; metrics & KPIs → "stat_cards" (with trend + trendDirection); trends → "chart"; showdowns / pros-cons → "comparison" + "table"; guides & workflows → "steps" or "flow_diagram"; setup → "terminal" + "code"; specs → "key_value"; tips & warnings → "quote"; multi-attribute scoring → "rating_grid"; FAQs → "accordion".
 
 CRITICAL JSON RULES:
-- Properly escape all special characters inside string values.
-- Use \\n for newlines and \\" for nested quotes to prevent JSON.parse() crashes.
+- Properly escape all special characters inside string values (\\n for newlines, \\" for quotes).
+- Use real numbers for numeric fields (value, data, correct, defaultScore, scores).
+- Follow each component schema exactly; components with missing required fields are discarded.
 
-REQUIRED OUTPUT FORMAT:
-{"_thought":"<Senior UI/UX reasoning: user intent, chosen layoutStyle, visual hierarchy, and component composition>","tabTitle":"<max 30 chars>","layoutStyle":"bento|dashboard|docs|split|standard","summary":"<one clear executive sentence>","components":[...]}
+REQUIRED OUTPUT FORMAT (keys in this order):
+{"_thought":"<max 30 words: intent, chosen layoutStyle, composition>","tabTitle":"<max 30 chars>","layoutStyle":"bento|dashboard|docs|split|standard","summary":"<one clear executive sentence>","components":[...]}
 
 LAYOUT STYLES:
-- "bento": Modern asymmetrical bento grid showcase (default for overviews, feature showcases, tech stacks, company profiles).
-- "dashboard": Executive analytics cockpit (for financial metrics, benchmarks, stats, numerical analysis).
-- "docs": Technical documentation with quick-anchor navigation (for guides, tutorials, setup, API references).
-- "split": Head-to-head dual column battle (for "X vs Y" or pros/cons comparisons).
-- "standard": Visual storyline (for timelines, milestones, or history).
+- "bento": asymmetrical bento grid (overviews, feature showcases, tech stacks, company profiles).
+- "dashboard": analytics cockpit (financial metrics, benchmarks, statistics).
+- "docs": technical documentation with anchor navigation (guides, tutorials, setup, API references).
+- "split": head-to-head two columns ("X vs Y", pros/cons).
+- "standard": linear visual storyline (timelines, milestones, history).
 
-COMPONENT TYPES (compact schema):
+COMPONENT TYPES (compact schema; <opt> fields may be omitted):
+${componentPromptSchemas()}
 
-{"type":"text","content":"<short 2-3 sentence markdown introduction only>"}
-{"type":"bento_grid","bentoTitle":"<opt>","bentoItems":[{"title":"<str>","body":"<str>","badge":"<opt str>","icon":"<opt emoji>","colSpan":2,"statValue":"<opt>","statLabel":"<opt>","trend":"<opt>","trendDirection":"up|down|neutral","headerSnippet":"<opt code/tag>","details":"<opt markdown>"}]}
-{"type":"cards","cards":[{"title":"<str>","body":"<str>","badge":"<opt str>","icon":"<opt emoji>","details":"<opt markdown>"}]}
-{"type":"chart","chartType":"bar","chartTitle":"<str>","chartData":{"labels":["A","B"],"datasets":[{"label":"<str>","data":[10,20]}]}}
-{"type":"code","language":"python","code":"print('hi')"}
-{"type":"code","snippets":[{"language":"js","label":"JS","code":"console.log('hi')"}]}
-{"type":"timeline","events":[{"year":"2020","title":"<str>","description":"<str>","icon":"<emoji>"}]}
-{"type":"table","tableHeaders":["Col1"],"tableRows":[["val1"]]}
-{"type":"stat_cards","stats":[{"label":"Users","value":"1.2M","trend":"+12%","trendDirection":"up","icon":"👥"}]}
-{"type":"progress","progressTitle":"<str>","items":[{"label":"React","value":85}]}
-{"type":"accordion","accordionItems":[{"question":"<str>","answer":"<str>"}]}
-{"type":"tabs_content","tabs":[{"label":"Tab1","content":"<markdown>"}]}
-{"type":"quote","quoteType":"tip","content":"<str>","author":"<opt str>"} (options: tip|warning|info|success|quote)
-{"type":"steps","steps":[{"title":"Step 1","description":"<str>","code":"npm i","language":"bash"}]}
-{"type":"comparison","leftSide":{"title":"Pros","items":["Fast"],"color":"green"},"rightSide":{"title":"Cons","items":["Heavy"],"color":"red"}} (color: green|red|blue|neutral)
-{"type":"rating","ratingTitle":"Rate","ratingItems":[{"label":"React","defaultScore":4}]}
-{"type":"quiz","questions":[{"question":"<str>","options":["A","B"],"correct":1,"explanation":"<opt>"}]}
-{"type":"image_gallery","query":"nature","count":6,"caption":"<opt>"}
-{"type":"key_value","kvTitle":"<opt>","entries":[{"key":"Lang","value":"Python","category":"<opt>"}]}
-{"type":"terminal","terminalTitle":"sh","lines":[{"prompt":"$","command":"ls","output":"file"}]}
-{"type":"flashcard","flashcardTitle":"<opt>","flashcards":[{"front":"Q","back":"A"}]}
-{"type":"color_palette","paletteTitle":"<opt>","swatches":[{"name":"Primary","hex":"#fff","description":"<opt>"}]}
-{"type":"poll","pollQuestion":"<str>","options":[{"label":"A","initialPercent":30}]}
-{"type":"rating_grid","gridTitle":"<opt>","criteria":["Speed"],"gridItems":[{"item":"React","scores":{"Speed":8}}]}
-{"type":"flow_diagram","flowTitle":"<opt>","nodes":[{"id":"a","label":"Start","shape":"circle"}],"edges":[{"from":"a","to":"b","label":"<opt>"}]}
-{"type":"map_highlight","mapTitle":"<opt>","highlights":[{"country":"France","value":"<opt>"}]}
-{"type":"document_view","docTitle":"<str>","docSubtitle":"<opt>","content":"<markdown>"}
+SHOWCASE BLOCKS (scroll- and hover-driven, full width — these make the page feel premium):
+- parallax_hero: cinematic opener. Use it as the FIRST component for overviews of a company, product, place, person, technology or era. At most one.
+- number_ticker: 2-4 headline KPIs that count up. Prefer it over stat_cards for the 2-4 most impressive numbers; values must be numeric (e.g. "$4.2B", "98%", 1200).
+- scroll_story: 3-5 chapter narrative (history, journey, how something evolved/works). Prefer it over timeline when each step deserves 2-3 sentences.
+- horizontal_scroll: 4-8 parallel items worth browsing (products, eras, destinations, case studies).
+- stacking_cards: 3-5 big ideas / principles / phases that build on each other.
+- hover_panels: 3-5 categories to explore side by side (pillars, regions, plans, roles).
+- spotlight_cards: 3-6 features or capabilities (more premium than "cards").
+- text_reveal: ONE memorable insight or thesis sentence; put 2-3 key words in "emphasis".
+- marquee: 8-16 short names (tech stack, partners, tools, ingredients, cities).
+Use 2-4 showcase blocks per response when the topic fits (parallax_hero counts as one), always mixed with at least one data component (chart, table, comparison, timeline…). Never two of the same type, and skip showcase blocks for pure code/how-to answers.
 
-SELECTION RULES — AS A SENIOR DESIGNER:
-- tech stack / company / product overview → layoutStyle="bento" + bento_grid + stat_cards + chart + key_value
-- compare neutral / X vs Y → layoutStyle="split" + comparison(blue/neutral) + table + bento_grid + stat_cards
-- pros and cons → layoutStyle="split" + comparison(green/red) + bento_grid + rating_grid
-- statistics/metrics/benchmarks → layoutStyle="dashboard" + stat_cards + chart + table + progress
-- how to / setup / guide → layoutStyle="docs" + steps + quote(tip) + terminal + code(snippets)
-- timeline/history → layoutStyle="standard" + timeline + stat_cards + quote(info)
-- FAQ → layoutStyle="docs" + accordion + quote(tip) + key_value
-- differences → layoutStyle="split" + table + comparison + stat_cards
-- code snippets → layoutStyle="docs" + code(snippets) + terminal + steps
-- features/list → layoutStyle="bento" + bento_grid + stat_cards + key_value
-- skills/ranking → layoutStyle="dashboard" + progress + rating_grid + stat_cards
+SELECTION RULES:
+- company / product / technology overview → bento + parallax_hero + number_ticker + spotlight_cards + chart + marquee
+- X vs Y → split + comparison(blue/neutral) + table + hover_panels + stat_cards
+- pros and cons → split + comparison(green/red) + bento_grid + rating_grid
+- statistics/metrics → dashboard + number_ticker + chart + table + progress
+- how-to / setup → docs + steps + quote(tip) + terminal + code(snippets)
+- history / evolution / story → standard + parallax_hero + scroll_story + number_ticker + text_reveal
+- guide to options / places / products → bento + parallax_hero + horizontal_scroll + table + quote(tip)
+- principles / strategy / framework → standard + text_reveal + stacking_cards + hover_panels
+- FAQ → docs + accordion + quote(tip) + key_value
+- flow/process → docs + flow_diagram + steps + quote(tip)
 - quiz / study → quiz + flashcard + progress
-- rating / reviews → layoutStyle="dashboard" + rating_grid + stat_cards + cards
-- flow/process → layoutStyle="docs" + flow_diagram + steps + quote(tip)
-- general question → layoutStyle="bento" + bento_grid + stat_cards + quote(tip)
+- general → bento + bento_grid + spotlight_cards + stat_cards + quote(tip)
 
-ALWAYS return 4 to 6 diverse visual components per response. NEVER return walls of text. Output ONLY JSON. Nothing else.`;
-// ── Provider call implementations ────────────────────────────────────────────
+FOLLOW-UPS: earlier assistant turns contain the JSON you previously generated. When the user refers to "that", "it", or asks to add/change something, build on that previous output.
 
-async function callGeminiModel(
-  modelConfig: ModelConfig,
-  userQuery: string,
-  conversationHistory: { role: "user" | "model"; parts: { text: string }[] }[]
-): Promise<string> {
+ALWAYS return 4 to 6 diverse visual components. Output ONLY JSON.`;
+
+// ── Errors ───────────────────────────────────────────────────────────────────
+
+type FailureKind = "rate_limit" | "auth" | "unavailable" | "bad_output" | "timeout" | "other";
+
+class ProviderError extends Error {
+  constructor(
+    message: string,
+    readonly kind: FailureKind,
+    readonly retryAfterSec?: number
+  ) {
+    super(message);
+  }
+}
+
+export class GenerationError extends Error {
+  constructor(
+    message: string,
+    readonly status: number
+  ) {
+    super(message);
+  }
+}
+
+function classifyHttp(status: number, body: string): FailureKind {
+  if (status === 429 || /quota|rate.?limit|too many requests/i.test(body)) return "rate_limit";
+  if (status === 401 || status === 403) return "auth";
+  if (status >= 500) return "unavailable";
+  return "other";
+}
+
+function parseRetryAfter(text: string, header?: string | null): number | undefined {
+  const h = header ? parseInt(header, 10) : NaN;
+  if (Number.isFinite(h)) return h;
+  const m = text.match(/retry[^0-9]{0,30}(\d+(?:\.\d+)?)\s*s/i);
+  return m ? Math.ceil(parseFloat(m[1])) : undefined;
+}
+
+function toProviderError(err: unknown): ProviderError {
+  if (err instanceof ProviderError) return err;
+  const e = err as { name?: string; message?: string; status?: number };
+  const msg = e?.message ?? String(err);
+  if (e?.name === "TimeoutError" || /timed? ?out/i.test(msg)) return new ProviderError(msg, "timeout");
+  if (e?.name === "AbortError") return new ProviderError(msg, "timeout");
+  const status = e?.status ?? parseInt(msg.match(/\[(\d{3})[^\]]*\]/)?.[1] ?? "", 10);
+  if (Number.isFinite(status)) {
+    return new ProviderError(msg, classifyHttp(status, msg), parseRetryAfter(msg));
+  }
+  if (/fetch failed|ECONNREFUSED|ENOTFOUND|network/i.test(msg)) return new ProviderError(msg, "unavailable");
+  return new ProviderError(msg, "other");
+}
+
+// ── Provider streaming implementations ───────────────────────────────────────
+
+type TextStream = AsyncGenerator<string, void, unknown>;
+
+async function* streamGemini(model: ModelConfig, history: HistoryTurn[], query: string, signal: AbortSignal): TextStream {
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error("GEMINI_API_KEY not configured");
+  if (!apiKey) throw new ProviderError("GEMINI_API_KEY not configured", "auth");
 
   const client = new GoogleGenerativeAI(apiKey);
-  const model = client.getGenerativeModel({ model: modelConfig.id });
+  const contents: Content[] = history.map((h) => ({ role: h.role, parts: [{ text: h.text }] }));
 
-  const augmentedQuery = `${SYSTEM_PROMPT}\n\n---\nUser request: ${userQuery}\n\nRespond with ONLY the JSON object:`;
-
-  const chat = model.startChat({
-    history: conversationHistory,
-    generationConfig: {
-      temperature: 0.4,
-      maxOutputTokens: modelConfig.maxOutput,
-    },
-  });
-
-  const result = await chat.sendMessage(augmentedQuery);
-  return result.response.text();
-}
-
-async function callOpenRouterModel(
-  modelConfig: ModelConfig,
-  userQuery: string,
-  conversationHistory: { role: "user" | "model"; parts: { text: string }[] }[]
-): Promise<string> {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) throw new Error("OPENROUTER_API_KEY not configured");
-
-  // Convert Gemini-style history to OpenAI-style messages
-  const messages: { role: string; content: string }[] = [];
-
-  // System prompt
-  messages.push({ role: "system", content: SYSTEM_PROMPT });
-
-  // Conversation history
-  for (const h of conversationHistory) {
-    messages.push({
-      role: h.role === "model" ? "assistant" : "user",
-      content: h.parts.map((p) => p.text).join("\n"),
-    });
+  let systemInstruction: string | undefined;
+  if (model.nativeSystemPrompt) {
+    systemInstruction = SYSTEM_PROMPT;
+    contents.push({ role: "user", parts: [{ text: query }] });
+  } else {
+    // Gemma rejects systemInstruction — prepend to the first user turn only.
+    if (contents.length > 0 && contents[0].role === "user") {
+      contents[0] = { role: "user", parts: [{ text: `${SYSTEM_PROMPT}\n\n---\n${contents[0].parts[0].text}` }] };
+      contents.push({ role: "user", parts: [{ text: `${query}\n\nRespond with ONLY the JSON object.` }] });
+    } else {
+      contents.push({ role: "user", parts: [{ text: `${SYSTEM_PROMPT}\n\n---\nUser request: ${query}\n\nRespond with ONLY the JSON object.` }] });
+    }
   }
 
-  // Current user query
-  messages.push({ role: "user", content: userQuery });
+  const gm = client.getGenerativeModel({ model: model.apiModel ?? model.id, systemInstruction });
+  const result = await gm.generateContentStream(
+    {
+      contents,
+      generationConfig: {
+        temperature: 0.4,
+        maxOutputTokens: Math.min(model.maxOutput, OUTPUT_TOKEN_CAP),
+        ...(model.jsonMode ? { responseMimeType: "application/json" } : {}),
+      },
+    },
+    { signal }
+  );
+  for await (const chunk of result.stream) {
+    const t = chunk.text();
+    if (t) yield t;
+  }
+}
 
-  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-      "HTTP-Referer": "https://adaptive-ui-search.vercel.app",
+async function* streamOpenAICompatible(
+  model: ModelConfig,
+  history: HistoryTurn[],
+  query: string,
+  signal: AbortSignal
+): TextStream {
+  let endpoint: string;
+  let headers: Record<string, string>;
+  if (model.provider === "openrouter") {
+    const key = process.env.OPENROUTER_API_KEY;
+    if (!key) throw new ProviderError("OPENROUTER_API_KEY not configured", "auth");
+    endpoint = "https://openrouter.ai/api/v1/chat/completions";
+    headers = {
+      Authorization: `Bearer ${key}`,
+      "HTTP-Referer": process.env.APP_URL || "https://adaptive-ui-search.vercel.app",
       "X-Title": "AdaptiveUI Search",
-    },
-    body: JSON.stringify({
-      model: modelConfig.routerId ?? modelConfig.id,
-      messages,
-      temperature: 0.4,
-      max_tokens: modelConfig.maxOutput,
-    }),
-  });
-
-  if (!response.ok) {
-    const errBody = await response.text().catch(() => "");
-    throw new Error(
-      `OpenRouter API error ${response.status}: ${errBody.slice(0, 200)}`
-    );
+    };
+  } else {
+    const baseUrl = (process.env.BASE_URL || process.env.AI_BASE_URL || "").replace(/\/+$/, "");
+    const key = process.env.API_KEY || process.env.CUSTOM_API_KEY;
+    if (!baseUrl || !key) throw new ProviderError("BASE_URL and API_KEY must be configured", "auth");
+    endpoint = baseUrl.endsWith("/chat/completions") ? baseUrl : `${baseUrl}/chat/completions`;
+    headers = { Authorization: `Bearer ${key}` };
   }
 
-  const data = await response.json();
+  const messages = [
+    { role: "system", content: SYSTEM_PROMPT },
+    ...history.map((h) => ({ role: h.role === "model" ? "assistant" : "user", content: h.text })),
+    { role: "user", content: query },
+  ];
 
-  if (!data.choices?.[0]?.message?.content) {
-    throw new Error("OpenRouter returned empty response");
-  }
-
-  return data.choices[0].message.content;
-}
-
-async function callCustomModel(
-  modelConfig: ModelConfig,
-  userQuery: string,
-  conversationHistory: { role: "user" | "model"; parts: { text: string }[] }[]
-): Promise<string> {
-  const baseUrl = (process.env.BASE_URL || process.env.AI_BASE_URL || "").replace(/\/+$/, "");
-  const apiKey = process.env.API_KEY || process.env.CUSTOM_API_KEY;
-  if (!baseUrl || !apiKey) throw new Error("BASE_URL and API_KEY must be configured");
-
-  const messages: { role: string; content: string }[] = [];
-  messages.push({ role: "system", content: SYSTEM_PROMPT });
-
-  for (const h of conversationHistory) {
-    messages.push({
-      role: h.role === "model" ? "assistant" : "user",
-      content: h.parts.map((p) => p.text).join("\n"),
+  const send = (jsonMode: boolean) =>
+    fetch(endpoint, {
+      method: "POST",
+      signal,
+      headers: { ...headers, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: model.apiModel ?? model.id,
+        messages,
+        temperature: 0.4,
+        max_tokens: Math.min(model.maxOutput, OUTPUT_TOKEN_CAP),
+        stream: true,
+        ...(jsonMode ? { response_format: { type: "json_object" } } : {}),
+      }),
     });
+
+  let res = await send(!!model.jsonMode);
+  // Some OpenAI-compatible servers reject response_format — retry once without it.
+  if (!res.ok && model.jsonMode && (res.status === 400 || res.status === 422)) {
+    const body = await res.text().catch(() => "");
+    if (/response_format|json/i.test(body)) res = await send(false);
+    else throw new ProviderError(`HTTP ${res.status}: ${body.slice(0, 200)}`, classifyHttp(res.status, body));
   }
-
-  messages.push({ role: "user", content: userQuery });
-
-  const endpoint = baseUrl.endsWith("/chat/completions")
-    ? baseUrl
-    : `${baseUrl}/chat/completions`;
-
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: modelConfig.routerId ?? modelConfig.id,
-      messages,
-      temperature: 0.3,
-    }),
-  });
-
-  if (!response.ok) {
-    const errBody = await response.text().catch(() => "");
-    throw new Error(
-      `Custom API error ${response.status}: ${errBody.slice(0, 200)}`
+  if (!res.ok || !res.body) {
+    const body = await res.text().catch(() => "");
+    throw new ProviderError(
+      `HTTP ${res.status}: ${body.slice(0, 200)}`,
+      classifyHttp(res.status, body),
+      parseRetryAfter(body, res.headers.get("retry-after"))
     );
   }
 
-  const data = await response.json();
-  const content = data.choices?.[0]?.message?.content;
-  if (!content) {
-    throw new Error("Custom API returned empty response");
-  }
-
-  return content;
-}
-
-// ── JSON extraction & validation (unchanged from original) ───────────────────
-
-/*
- * Repairs common structural mistakes small models make.
- * Detects orphan component items placed directly in `components` array
- * and wraps them into their correct type envelopes.
- */
-function repairComponents(components: unknown[]): unknown[] {
-  const repaired: unknown[] = [];
-  const orphanCards: Record<string, unknown>[] = [];
-  const orphanEvents: Record<string, unknown>[] = [];
-  const orphanSteps: Record<string, unknown>[] = [];
-  const orphanStats: Record<string, unknown>[] = [];
-
-  const flush = () => {
-    if (orphanCards.length > 0) {
-      repaired.push({ type: "cards", cards: [...orphanCards] });
-      orphanCards.length = 0;
-    }
-    if (orphanEvents.length > 0) {
-      repaired.push({ type: "timeline", events: [...orphanEvents] });
-      orphanEvents.length = 0;
-    }
-    if (orphanSteps.length > 0) {
-      repaired.push({ type: "steps", steps: [...orphanSteps] });
-      orphanSteps.length = 0;
-    }
-    if (orphanStats.length > 0) {
-      repaired.push({ type: "stat_cards", stats: [...orphanStats] });
-      orphanStats.length = 0;
-    }
-  };
-
-  for (const c of components) {
-    if (!c || typeof c !== "object") continue;
-    const comp = c as Record<string, unknown>;
-
-    if (ALL_TYPES.includes(comp.type as string)) {
-      flush();
-      repaired.push(comp);
-    } else if (typeof comp.title === "string" && typeof comp.body === "string") {
-      orphanCards.push(comp);
-    } else if (typeof comp.title === "string" && typeof comp.description === "string") {
-      // Disambiguate timeline event vs step by presence of "year"
-      if ("year" in comp) {
-        orphanEvents.push(comp);
-      } else {
-        orphanSteps.push(comp);
+  const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+  let pending = "";
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    pending += value;
+    const lines = pending.split("\n");
+    pending = lines.pop() ?? "";
+    for (const line of lines) {
+      const l = line.trim();
+      if (!l.startsWith("data:")) continue;
+      const data = l.slice(5).trim();
+      if (data === "[DONE]") return;
+      try {
+        const json = JSON.parse(data);
+        if (json.error) {
+          const msg = typeof json.error === "string" ? json.error : JSON.stringify(json.error);
+          throw new ProviderError(msg.slice(0, 200), classifyHttp(json.error?.code ?? 0, msg));
+        }
+        const delta = json.choices?.[0]?.delta?.content;
+        if (typeof delta === "string" && delta) yield delta;
+      } catch (e) {
+        if (e instanceof ProviderError) throw e;
+        // ignore keep-alive / malformed SSE lines
       }
-    } else if (typeof comp.label === "string" && typeof comp.value === "string") {
-      orphanStats.push(comp);
-    } else if (typeof comp.content === "string") {
-      flush();
-      repaired.push({ type: "text", content: comp.content });
     }
   }
-
-  flush();
-  return repaired;
 }
 
-function validateResponse(data: unknown): AdaptiveUIResponse | null {
-  if (!data || typeof data !== "object") return null;
-  const d = data as Record<string, unknown>;
-  if (typeof d.tabTitle !== "string") return null;
-  if (!Array.isArray(d.components)) return null;
+// ── Attempt planning ─────────────────────────────────────────────────────────
 
-  const validLayouts = ["bento", "dashboard", "docs", "split", "standard"];
-  if (typeof d.layoutStyle === "string" && !validLayouts.includes(d.layoutStyle)) {
-    d.layoutStyle = "bento";
-  } else if (!d.layoutStyle) {
-    d.layoutStyle = "bento";
+function providerConfigured(p: Provider): boolean {
+  if (p === "custom") {
+    return !!((process.env.BASE_URL || process.env.AI_BASE_URL) && (process.env.API_KEY || process.env.CUSTOM_API_KEY));
   }
-
-  const repaired = repairComponents(d.components);
-  if (repaired.length === 0) return null;
-
-  d.components = repaired;
-
-  for (const c of d.components as unknown[]) {
-    if (!c || typeof c !== "object") return null;
-    const comp = c as Record<string, unknown>;
-    if (!ALL_TYPES.includes(comp.type as string)) return null;
-  }
-
-  return data as AdaptiveUIResponse;
+  if (p === "gemini") return !!process.env.GEMINI_API_KEY;
+  return !!process.env.OPENROUTER_API_KEY;
 }
-
-/*
- * Extracts the first complete JSON object from the model output.
- * Handles cases where the model wraps output in prose or code fences.
- */
-function extractJSON(raw: string): string {
-  // Strip reasoning/think blocks (used by reasoning models) before extracting JSON
-  const withoutThinking = raw.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
-
-  const fenced = withoutThinking.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (fenced) return fenced[1].trim();
-
-  const start = withoutThinking.indexOf("{");
-  const end = withoutThinking.lastIndexOf("}");
-  if (start !== -1 && end !== -1 && end > start) {
-    return withoutThinking.slice(start, end + 1).trim();
-  }
-
-  return withoutThinking.trim();
-}
-
-// ── Main entry point with fallback ───────────────────────────────────────────
 
 /**
- * Returns the list of models that can actually be used based on which
- * API keys and URLs are configured.
+ * Picks which models to try: up to PER_PROVIDER models from each configured
+ * provider (in priority order), capped at MAX_ATTEMPTS overall. This guarantees
+ * a dead provider cannot consume every attempt and block fallback to the others.
  */
-function getAvailableModels(): ModelConfig[] {
-  const hasCustom = !!((process.env.BASE_URL || process.env.AI_BASE_URL) && (process.env.API_KEY || process.env.CUSTOM_API_KEY));
-  const hasGemini = !!process.env.GEMINI_API_KEY;
-  const hasOpenRouter = !!process.env.OPENROUTER_API_KEY;
-
-  // If custom BASE_URL + API_KEY is configured, prioritize custom models
-  if (hasCustom) {
-    return MODEL_REGISTRY.filter((m) => m.provider === "custom");
+export function buildAttemptPlan(): ModelConfig[] {
+  const perProvider = envInt("AI_MODELS_PER_PROVIDER", 2);
+  const maxAttempts = envInt("AI_MAX_ATTEMPTS", 5);
+  const all = [...customModels(), ...STATIC_REGISTRY];
+  const plan: ModelConfig[] = [];
+  for (const p of PROVIDER_PRIORITY) {
+    if (!providerConfigured(p)) continue;
+    plan.push(...all.filter((m) => m.provider === p).slice(0, perProvider));
   }
-
-  return MODEL_REGISTRY.filter((m) => {
-    if (m.provider === "gemini") return hasGemini;
-    if (m.provider === "openrouter") return hasOpenRouter;
-    return false;
-  });
+  return plan.slice(0, maxAttempts);
 }
 
-export async function generateAdaptiveUI(
-  userQuery: string,
-  conversationHistory: { role: "user" | "model"; parts: { text: string }[] }[] = []
-): Promise<AdaptiveUIResponse> {
-  const available = getAvailableModels();
+// ── Main entry point ─────────────────────────────────────────────────────────
 
-  if (available.length === 0) {
-    throw new Error(
-      "NO_PROVIDER_CONFIGURED: Set BASE_URL and API_KEY or GEMINI_API_KEY in .env.local"
-    );
+const ATTEMPT_TIMEOUT_MS = envInt("AI_ATTEMPT_TIMEOUT_MS", 90_000);
+const MIN_SALVAGE_COMPONENTS = 2;
+const FIRST_TOKEN_TIMEOUT_MS = envInt("AI_FIRST_TOKEN_TIMEOUT_MS", 30_000);
+
+export async function generateAdaptiveUIStream(
+  query: string,
+  history: HistoryTurn[],
+  emit: (e: StreamEvent) => void,
+  clientSignal: AbortSignal
+): Promise<AdaptiveUIResponse> {
+  const plan = buildAttemptPlan();
+  if (plan.length === 0) {
+    throw new GenerationError("Server configuration error: no AI provider API key is configured.", 500);
   }
 
-  const modelsToTry = available.slice(0, MAX_ATTEMPTS);
-  const errors: string[] = [];
+  const failures: ProviderError[] = [];
+  const deadProviders = new Set<Provider>();
+  const dev = process.env.NODE_ENV === "development";
 
-  for (const modelConfig of modelsToTry) {
+  for (const model of plan) {
+    if (clientSignal.aborted) throw new GenerationError("Request cancelled", 499);
+    if (deadProviders.has(model.provider)) continue;
+
+    emit({ type: "status", message: failures.length ? "Retrying with a fallback model…" : "Designing your layout…" });
+
+    const ctrl = new AbortController();
+    const onClientAbort = () => ctrl.abort(clientSignal.reason);
+    clientSignal.addEventListener("abort", onClientAbort);
+    const overall = setTimeout(() => ctrl.abort(new DOMException("attempt timed out", "TimeoutError")), ATTEMPT_TIMEOUT_MS);
+    let firstToken: ReturnType<typeof setTimeout> | undefined = setTimeout(
+      () => ctrl.abort(new DOMException("no response from model", "TimeoutError")),
+      FIRST_TOKEN_TIMEOUT_MS
+    );
+
+    const scanner = new ComponentStreamScanner();
+    let raw = "";
+    let emitted = 0;
+    const streamed: ComponentDef[] = [];
+    const streamedMeta: Record<string, string> = {};
+
     try {
-      if (process.env.NODE_ENV === "development") {
-        console.log(`[ai-provider] Trying model: ${modelConfig.id} (${modelConfig.provider})`);
+      if (dev) console.log(`[ai-provider] Trying ${model.id}`);
+      const stream =
+        model.provider === "gemini"
+          ? streamGemini(model, history, query, ctrl.signal)
+          : streamOpenAICompatible(model, history, query, ctrl.signal);
+
+      for await (const chunk of stream) {
+        if (firstToken) {
+          clearTimeout(firstToken);
+          firstToken = undefined;
+        }
+        raw += chunk;
+        const { components, meta } = scanner.feed(chunk);
+        Object.assign(streamedMeta, meta);
+        if (Object.keys(meta).length) {
+          emit({
+            type: "meta",
+            tabTitle: meta.tabTitle,
+            summary: meta.summary,
+            layoutStyle: meta.layoutStyle ? normalizeLayout(meta.layoutStyle) : undefined,
+          });
+        }
+        for (const text of components) {
+          let comp: ComponentDef | null = null;
+          try {
+            comp = parseComponent(JSON.parse(text));
+          } catch {
+            /* incomplete / malformed — final parse decides */
+          }
+          if (comp) {
+            streamed.push(comp);
+            emit({ type: "component", index: emitted++, component: comp });
+          }
+        }
       }
 
-      // Call the appropriate provider
-      let raw: string;
-      if (modelConfig.provider === "custom") {
-        raw = await callCustomModel(modelConfig, userQuery, conversationHistory);
-      } else if (modelConfig.provider === "gemini") {
-        raw = await callGeminiModel(modelConfig, userQuery, conversationHistory);
-      } else {
-        raw = await callOpenRouterModel(modelConfig, userQuery, conversationHistory);
-      }
-
-      if (process.env.NODE_ENV === "development") {
-        console.log(`[ai-provider] Raw output from ${modelConfig.id}:`, raw.slice(0, 500));
-      }
-
-      // Parse and validate
-      const cleaned = extractJSON(raw);
-
-      let parsed: unknown;
+      let validated: AdaptiveUIResponse | null = null;
       try {
-        parsed = JSON.parse(cleaned);
+        validated = validateResponse(JSON.parse(extractJSON(raw)));
       } catch {
-        const msg = `Model ${modelConfig.id} returned invalid JSON`;
-        console.error(`[ai-provider] ${msg}:`, cleaned.slice(0, 300));
-        errors.push(msg);
-        continue; // Try next model
+        /* handled below */
       }
-
-      const validated = validateResponse(parsed);
-      if (!validated) {
-        const msg = `Model ${modelConfig.id} response did not match expected schema`;
-        console.error(`[ai-provider] ${msg}:`, JSON.stringify(parsed).slice(0, 300));
-        errors.push(msg);
-        continue; // Try next model
+      // Salvage: the document as a whole is broken (e.g. truncated, or junk
+      // after the last component) but the components that streamed in were
+      // individually valid — use them rather than discarding the attempt.
+      if (!validated && streamed.length >= MIN_SALVAGE_COMPONENTS) {
+        if (dev) console.warn(`[ai-provider] ${model.id}: invalid document, salvaged ${streamed.length} streamed components`);
+        validated = {
+          tabTitle: (streamedMeta.tabTitle || query).slice(0, 60),
+          summary: streamedMeta.summary || undefined,
+          layoutStyle: normalizeLayout(streamedMeta.layoutStyle),
+          components: streamed,
+        };
       }
+      if (!validated) throw new ProviderError("returned invalid or off-schema JSON", "bad_output");
 
-      if (process.env.NODE_ENV === "development") {
-        console.log(`[ai-provider] ✓ Success with model: ${modelConfig.id}`);
-      }
-
+      if (dev) console.log(`[ai-provider] ✓ ${model.id} (${validated.components.length} components)`);
       return validated;
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error(`[ai-provider] Model ${modelConfig.id} failed:`, msg.slice(0, 200));
-      errors.push(`${modelConfig.id}: ${msg.slice(0, 150)}`);
-      continue; // Try next model
+      if (clientSignal.aborted) throw new GenerationError("Request cancelled", 499);
+      const pe = toProviderError(err);
+      failures.push(pe);
+      console.error(`[ai-provider] ${model.id} failed (${pe.kind}): ${pe.message.slice(0, 200)}`);
+      if (dev && pe.kind === "bad_output") {
+        console.error("[ai-provider] raw output head:", raw.slice(0, 200));
+        console.error("[ai-provider] raw output tail:", raw.slice(-200));
+      }
+      // Auth / connectivity problems affect every model of that provider.
+      if (pe.kind === "auth" || pe.kind === "unavailable") deadProviders.add(model.provider);
+      if (emitted > 0) emit({ type: "reset" });
+    } finally {
+      clearTimeout(overall);
+      if (firstToken) clearTimeout(firstToken);
+      clientSignal.removeEventListener("abort", onClientAbort);
     }
   }
 
-  // All models failed
-  throw new Error(
-    `All models failed after ${modelsToTry.length} attempts. Errors: ${errors.join(" | ")}`
-  );
+  // Every attempt failed: report the most actionable cause.
+  if (failures.length > 0 && failures.every((f) => f.kind === "rate_limit")) {
+    const wait = Math.max(0, ...failures.map((f) => f.retryAfterSec ?? 0));
+    throw new GenerationError(
+      `Rate limit reached on all AI providers.${wait ? ` Please wait ${wait}s and try again.` : " Please wait a moment and try again."}`,
+      429
+    );
+  }
+  if (failures.some((f) => f.kind === "rate_limit")) {
+    throw new GenerationError("AI providers are busy or rate-limited. Please try again in a moment.", 503);
+  }
+  if (failures.length > 0 && failures.every((f) => f.kind === "timeout")) {
+    throw new GenerationError("The AI models took too long to respond. Please try again.", 504);
+  }
+  throw new GenerationError("AI service is temporarily unavailable. Please try again in a moment.", 502);
 }

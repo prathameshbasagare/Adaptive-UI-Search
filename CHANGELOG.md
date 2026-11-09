@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — interactive showcase blocks
+- Nine scroll- and hover-driven components (GSAP 3.15 + ScrollTrigger): `parallax_hero`, `scroll_story`, `horizontal_scroll`, `stacking_cards`, `text_reveal`, `number_ticker`, `hover_panels`, `spotlight_cards`, `marquee`. All are schema-validated, code-split, keyboard-accessible where interactive, and respect `prefers-reduced-motion`.
+- Prompt guidance on when to use each showcase block; the hero always renders first, and showcase blocks span the full width in every layout.
+- Gap-free bento packing: an item stretches to fill a row instead of leaving an empty column.
+
+### Fixed
+- **The result panel never scrolled; the whole page did** (the app shell was `min-h-screen`). The header and tab bar now stay fixed and `#result-panel` is the scroll container.
+- The rate limiter trusted the leftmost (client-controlled) `X-Forwarded-For` entry, so it could be bypassed with a random header.
+- **A malformed AI response could break the app permanently.** Components are now validated against per-type Zod schemas, invalid items or blocks are dropped, each block renders in its own error boundary, and saved tabs are re-validated on load. Added `app/error.tsx` with a "clear saved results" option.
+- **No fallback when a custom endpoint was configured.** The attempt plan now takes models from every configured provider, and a provider with auth or connectivity failures is skipped.
+- **The rate-limit message was never shown.** Failures are now classified (rate_limit / auth / unavailable / timeout / bad_output) and mapped to the right status and message.
+- **Interactive state leaked between tabs** (quiz progress, flashcards, polls). The content area is now keyed by tab id, and components have stable keys.
+- **JSON extraction matched code fences inside string values.**
+- **SSR hydration mismatch from persisted stores.** Stores now use `skipHydration` with an explicit rehydrate, and the theme is applied by an inline script before first paint.
+- **Charts:** pie and doughnut slices were all the same colour; titles were drawn twice; mixed bar+line charts depended on another chart having registered `LineController`; the canvas wasn't sized responsively.
+- **Flow diagrams:** nodes had no coordinates (the model is never asked for them), edges ran through node labels and hid their arrowheads, and skip-level edges crossed intermediate nodes. Replaced with a layered layout (`lib/flow-layout.ts`).
+- **Map highlight:** dot positions were derived from list index instead of geography. Now uses country centroids and continent outlines (`lib/geo.ts`).
+- **Image gallery:** blurry upscaled images and layout shift while loading.
+- **Accessibility:** dialog semantics, focus trap and Escape for the modal; keyboard support for tabs (arrow keys, Home/End, Delete), clickable cards and flashcards; the tab close button is now visible on touch; the accordion no longer clips long answers.
+- The chat panel no longer squeezes content on small screens and now follows the selected theme.
+
+### Added
+- Streaming NDJSON responses with progressive rendering, a status line, and a stop button.
+- Follow-up context: recent results are sent back to the model as JSON.
+- Per-IP rate limiting, request/history validation, and per-attempt and first-token timeouts.
+- Gemini `systemInstruction` and JSON mode where the model supports them; opt-in JSON mode for custom endpoints.
+- A single component registry (`lib/schemas.ts`) that drives validation, types and the prompt.
+- Vitest unit tests and a GitHub Actions CI workflow.
+
+### Changed
+- "Clear conversation" clears only the chat; "Close all tabs" is a separate control.
+- Removed the unused `lightningcss` runtime dependency.
+
+## [Previous]
+
 ### Added
 - **User-controlled 6-theme color system** via CSS custom properties (`--theme-400/500/600` + alpha variants); themes: `violet` (default), `blue`, `emerald`, `amber`, `rose`, `cyan`
 - `src/hooks/useThemeStore.ts` — Zustand store persisting selected theme to `localStorage` and syncing `data-theme` attribute on `<body>`
