@@ -34,10 +34,16 @@ export default function Accordion({ items }: AccordionProps) {
                 }}
               />
             </button>
-            <div className={`overflow-hidden transition-all duration-200 ease-out ${isOpen ? "max-h-96" : "max-h-0"}`}>
+            {/* grid-rows trick animates to the content's real height (max-h-96 clipped long answers) */}
+            <div
+              className={`grid transition-[grid-template-rows] duration-200 ease-out ${isOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
+              inert={!isOpen}
+            >
+              <div className="min-h-0 overflow-hidden">
               <p className="px-5 pb-4 text-sm text-slate-400 leading-relaxed border-t border-slate-700/40 pt-3">
                 {item.answer}
               </p>
+              </div>
             </div>
           </div>
         );

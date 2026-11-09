@@ -1,69 +1,122 @@
 // File: ./src/app/api/chat/route.ts
 
 import { NextRequest, NextResponse } from "next/server";
-import { generateAdaptiveUI } from "@/lib/ai-provider";
+import { z } from "zod";
+import { generateAdaptiveUIStream, GenerationError } from "@/lib/ai-provider";
+import { checkRateLimit, clientKey, envInt } from "@/lib/rate-limit";
+import type { HistoryTurn, StreamEvent } from "@/lib/types";
 
-export interface ChatRequestBody {
-  query: string;
-  history?: { role: "user" | "model"; parts: { text: string }[] }[];
+export const runtime = "nodejs";
+export const maxDuration = 300;
+
+const MAX_QUERY_CHARS = 2_000;
+const MAX_HISTORY_TURNS = 12;
+const MAX_TURN_CHARS = 12_000;
+const MAX_HISTORY_CHARS = 30_000;
+
+const BodySchema = z.object({
+  query: z.string().trim().min(1, "Query is required").max(MAX_QUERY_CHARS, `Query must be ${MAX_QUERY_CHARS} characters or fewer`),
+  history: z
+    .array(
+      z.object({
+        role: z.enum(["user", "model"]),
+        text: z.string().max(MAX_TURN_CHARS),
+      })
+    )
+    .max(50)
+    .optional()
+    .default([]),
+});
+
+/**
+ * Keeps the most recent turns within the char budget, and normalises the
+ * sequence so it starts with a user turn and strictly alternates roles
+ * (both Gemini and OpenAI-style APIs expect that).
+ */
+function sanitizeHistory(history: HistoryTurn[]): HistoryTurn[] {
+  const recent = history.slice(-MAX_HISTORY_TURNS);
+  const kept: HistoryTurn[] = [];
+  let total = 0;
+  for (let i = recent.length - 1; i >= 0; i--) {
+    total += recent[i].text.length;
+    if (total > MAX_HISTORY_CHARS) break;
+    kept.unshift(recent[i]);
+  }
+  const alternating: HistoryTurn[] = [];
+  for (const t of kept) {
+    if (alternating.length === 0 && t.role !== "user") continue;
+    if (alternating.length && alternating[alternating.length - 1].role === t.role) {
+      alternating[alternating.length - 1] = t;
+    } else alternating.push(t);
+  }
+  // History must end with a model turn; the new query is the next user turn.
+  if (alternating.length && alternating[alternating.length - 1].role === "user") alternating.pop();
+  return alternating;
 }
 
 export async function POST(request: NextRequest) {
-  try {
-    const body: ChatRequestBody = await request.json();
-
-    if (!body.query || typeof body.query !== "string" || body.query.trim().length === 0) {
-      return NextResponse.json(
-        { error: "Query is required and must be a non-empty string" },
-        { status: 400 }
-      );
-    }
-
-    if (body.query.trim().length > 2000) {
-      return NextResponse.json(
-        { error: "Query must be 2000 characters or fewer" },
-        { status: 400 }
-      );
-    }
-
-    const adaptiveResponse = await generateAdaptiveUI(
-      body.query.trim(),
-      body.history ?? []
-    );
-
-    return NextResponse.json(adaptiveResponse);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error occurred";
-
-    if (message.includes("NO_PROVIDER_CONFIGURED")) {
-      return NextResponse.json(
-        { error: "Server configuration error: No AI provider API key is configured." },
-        { status: 500 }
-      );
-    }
-
-    if (message.includes("All models failed")) {
-      return NextResponse.json(
-        { error: "AI service is temporarily unavailable. Please try again in a moment." },
-        { status: 502 }
-      );
-    }
-
-    // Extract retry delay from 429 response for a helpful message
-    if (message.includes("429") || message.includes("Too Many Requests") || message.includes("quota")) {
-      const retryMatch = message.match(/retry[^0-9]*(\d+)/i);
-      const retrySeconds = retryMatch ? parseInt(retryMatch[1], 10) : null;
-      const retryHint = retrySeconds ? ` Please wait ${retrySeconds}s and try again.` : " Please wait a moment and try again.";
-      return NextResponse.json(
-        { error: `Rate limit reached.${retryHint}` },
-        { status: 429 }
-      );
-    }
-
-    console.error("[/api/chat] Error:", error);
+  const rl = checkRateLimit(clientKey(request, "chat"), envInt("CHAT_RATE_LIMIT_PER_MIN", 10), 60_000);
+  if (!rl.ok) {
     return NextResponse.json(
-      { error: "Failed to generate response. Please try again." },
-      { status: 500 }
+      { error: `Too many requests. Please wait ${rl.retryAfterSec}s and try again.` },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfterSec) } }
     );
   }
+
+  let body: z.output<typeof BodySchema>;
+  try {
+    const parsed = BodySchema.safeParse(await request.json());
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid request" }, { status: 400 });
+    }
+    body = parsed.data;
+  } catch {
+    return NextResponse.json({ error: "Request body must be JSON" }, { status: 400 });
+  }
+
+  const history = sanitizeHistory(body.history);
+  const encoder = new TextEncoder();
+
+  // NDJSON stream: one StreamEvent per line.
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      let closed = false;
+      const emit = (e: StreamEvent) => {
+        if (closed) return;
+        try {
+          controller.enqueue(encoder.encode(JSON.stringify(e) + "\n"));
+        } catch {
+          closed = true;
+        }
+      };
+      try {
+        const response = await generateAdaptiveUIStream(body.query, history, emit, request.signal);
+        emit({ type: "done", response });
+      } catch (err) {
+        if (err instanceof GenerationError) {
+          if (err.status !== 499) emit({ type: "error", error: err.message, status: err.status });
+        } else {
+          console.error("[/api/chat] Unexpected error:", err);
+          emit({ type: "error", error: "Failed to generate response. Please try again.", status: 500 });
+        }
+      } finally {
+        if (!closed) {
+          closed = true;
+          try {
+            controller.close();
+          } catch {
+            /* already closed by client disconnect */
+          }
+        }
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "application/x-ndjson; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      "X-Accel-Buffering": "no",
+    },
+  });
 }

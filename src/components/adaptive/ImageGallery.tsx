@@ -11,6 +11,8 @@ interface PexelsPhoto {
   alt: string;
   photographer: string;
   photographerUrl: string;
+  width?: number;
+  height?: number;
 }
 
 interface ImageGalleryProps {
@@ -28,7 +30,7 @@ export default function ImageGallery({ query, count = 6, caption }: ImageGallery
     if (!query) return;
     let ignore = false;
     fetch(`/api/images?query=${encodeURIComponent(query)}&count=${count}`)
-      .then((r) => r.json())
+      .then((r) => r.json().catch(() => ({ error: `Image request failed (${r.status})` })))
       .then((data) => {
         if (ignore) return;
         if (data.error) throw new Error(data.error);
@@ -67,7 +69,9 @@ export default function ImageGallery({ query, count = 6, caption }: ImageGallery
       >
         <Camera size={32} className="text-slate-600" />
         <p className="text-sm text-slate-500">{error}</p>
-        <p className="text-xs text-slate-600">Add your PEXELS_API_KEY to enable image search.</p>
+        {/not configured/i.test(error) && (
+          <p className="text-xs text-slate-600">Add PEXELS_API_KEY to enable image search.</p>
+        )}
       </div>
     );
   }
@@ -76,13 +80,16 @@ export default function ImageGallery({ query, count = 6, caption }: ImageGallery
     <div className="space-y-3">
       {caption && <p className="text-sm text-slate-400">{caption}</p>}
       <div className="columns-2 sm:columns-3 gap-3 space-y-3">
-        {photos.map((photo, i) => (
-          <div key={i} className="group relative overflow-hidden rounded-xl break-inside-avoid">
+        {photos.map((photo) => (
+          <div key={photo.thumb} className="group relative overflow-hidden rounded-xl break-inside-avoid">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={photo.thumb}
               alt={photo.alt}
-              className="w-full h-auto block transition-transform duration-300 group-hover:scale-105"
+              width={photo.width}
+              height={photo.height}
+              style={photo.width && photo.height ? { aspectRatio: `${photo.width} / ${photo.height}` } : undefined}
+              className="w-full h-auto block bg-slate-800 transition-transform duration-300 group-hover:scale-105"
               loading="lazy"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-end p-3">

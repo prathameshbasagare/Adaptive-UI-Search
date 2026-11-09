@@ -2,6 +2,7 @@
 
 "use client";
 
+import { pressable } from "@/lib/a11y";
 import { ExternalLink, TrendingUp, TrendingDown, Minus, Sparkles } from "lucide-react";
 import type { BentoItem } from "@/lib/types";
 import { useModal } from "@/contexts/ModalContext";
@@ -58,13 +59,12 @@ export default function BentoGrid({ bentoTitle, items }: BentoGridProps) {
           return (
             <div
               key={index}
-              onClick={
-                hasDetails
-                  ? () => openModal(item.title, <TextBlock content={item.details!} />)
-                  : undefined
-              }
+              {...pressable(
+                hasDetails ? () => openModal(item.title, <TextBlock content={item.details!} />) : undefined,
+                hasDetails ? `${item.title} — show details` : undefined
+              )}
               className={`group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-800/80 bg-slate-900/60 p-6 backdrop-blur-md transition-all duration-300 hover:border-slate-700 hover:bg-slate-900/90 hover:shadow-xl hover:shadow-black/40 ${colSpan} ${rowSpan} ${
-                hasDetails ? "cursor-pointer" : ""
+                hasDetails ? "cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-slate-400" : ""
               }`}
             >
               {/* Subtle top edge gradient glow */}
