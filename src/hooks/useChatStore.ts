@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 import { persist, createJSONStorage, type StateStorage } from "zustand/middleware";
-import { parseComponent, type ComponentDef } from "@/lib/schemas";
+import { parseComponent, parseWebSources, type ComponentDef } from "@/lib/schemas";
 import { normalizeLayout } from "@/lib/validate";
 import type {
   ChatStore,
@@ -10,6 +10,7 @@ import type {
   TabEntry,
   HistoryTurn,
   StreamEvent,
+  WebSearchMode,
   AdaptiveUIResponse,
 } from "@/lib/types";
 
@@ -76,6 +77,7 @@ function sanitizeTabs(tabs: unknown): TabEntry[] {
           summary: typeof tab.response.summary === "string" ? tab.response.summary : undefined,
           layoutStyle: normalizeLayout(tab.response.layoutStyle),
           components: comps,
+          sources: parseWebSources(tab.response.sources),
         },
       },
     ];
@@ -136,6 +138,8 @@ export const useChatStore = create<ChatStore>()(
         set((s) => ({ messages: [...s.messages, { ...msg, id: generateId(), timestamp: Date.now() }] }));
 
       return {
+        webSearchMode: "auto",
+        setWebSearchMode: (m) => set({ webSearchMode: m }),
         messages: [],
         tabs: [],
         activeTabId: null,
@@ -145,7 +149,7 @@ export const useChatStore = create<ChatStore>()(
 
         sendQuery: async (query: string) => {
           const trimmed = query.trim();
-          const { isLoading, messages, tabs } = get();
+          const { isLoading, messages, tabs, webSearchMode } = get();
           if (!trimmed || isLoading) return;
 
           const history = buildHistory(messages, tabs);
@@ -171,6 +175,9 @@ export const useChatStore = create<ChatStore>()(
             switch (e.type) {
               case "status":
                 set({ statusMessage: e.message });
+                break;
+              case "sources":
+                patchTab(tabId, (t) => ({ ...t, response: { ...t.response, sources: parseWebSources(e.sources) } }));
                 break;
               case "reset":
                 patchTab(tabId, (t) => ({ ...t, response: { ...t.response, components: [] } }));
@@ -207,7 +214,7 @@ export const useChatStore = create<ChatStore>()(
             const res = await fetch("/api/chat", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ query: trimmed, history }),
+              body: JSON.stringify({ query: trimmed, history, webSearch: webSearchMode }),
               signal: controller.signal,
             });
 
@@ -258,7 +265,12 @@ export const useChatStore = create<ChatStore>()(
               ...t,
               title: result.tabTitle,
               streaming: false,
-              response: { ...result, layoutStyle: normalizeLayout(result.layoutStyle), components },
+              response: {
+                ...result,
+                layoutStyle: normalizeLayout(result.layoutStyle),
+                components,
+                sources: parseWebSources(result.sources),
+              },
             }));
             addMessage({ role: "assistant", content: result.summary ?? `Generated: ${result.tabTitle}`, tabId });
           } else {
@@ -300,6 +312,7 @@ export const useChatStore = create<ChatStore>()(
         const tabs = state.tabs.filter((t) => !t.streaming).slice(-MAX_PERSISTED_TABS);
         const ids = new Set(tabs.map((t) => t.id));
         return {
+          webSearchMode: state.webSearchMode,
           messages: state.messages.slice(-MAX_PERSISTED_MESSAGES),
           tabs,
           activeTabId: state.activeTabId && ids.has(state.activeTabId) ? state.activeTabId : (tabs.at(-1)?.id ?? null),
@@ -310,7 +323,9 @@ export const useChatStore = create<ChatStore>()(
         const p = (persisted ?? {}) as Partial<ChatStore>;
         const tabs = sanitizeTabs(p.tabs);
         const activeTabId = tabs.some((t) => t.id === p.activeTabId) ? (p.activeTabId as string) : (tabs.at(-1)?.id ?? null);
-        return { ...current, tabs, activeTabId, messages: sanitizeMessages(p.messages) };
+        const webSearchMode: WebSearchMode =
+          p.webSearchMode === "on" || p.webSearchMode === "off" || p.webSearchMode === "auto" ? p.webSearchMode : current.webSearchMode;
+        return { ...current, tabs, activeTabId, webSearchMode, messages: sanitizeMessages(p.messages) };
       },
     }
   )

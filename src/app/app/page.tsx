@@ -8,6 +8,8 @@ import { useStoresHydrated } from "@/hooks/useHydrated";
 import AdaptiveContent from "@/components/adaptive/AdaptiveContent";
 import FloatingChatButton from "@/components/chat/FloatingChatButton";
 import ChatPanel from "@/components/chat/ChatPanel";
+import WebSearchToggle from "@/components/chat/WebSearchToggle";
+import SourcesList from "@/components/adaptive/SourcesList";
 import ThemePicker from "@/components/ui/ThemePicker";
 import { ModalProvider } from "@/contexts/ModalContext";
 import {
@@ -25,6 +27,7 @@ import {
   BarChart2,
   Loader2,
   XCircle,
+  Globe,
 } from "lucide-react";
 import Link from "next/link";
 import type { LayoutStyle } from "@/lib/types";
@@ -248,6 +251,17 @@ export default function AppPage() {
                             style={{ backgroundColor: "var(--theme-500)" }}
                           />
                           <span className="font-mono">{activeTab.query}</span>
+                          {!!activeTab.response.sources?.length && (
+                            <a
+                              href="#sources"
+                              className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium hover:opacity-80"
+                              style={{ borderColor: "var(--theme-500-30)", color: "var(--theme-400)" }}
+                            >
+                              <Globe size={11} />
+                              Based on {activeTab.response.sources.length} web{" "}
+                              {activeTab.response.sources.length === 1 ? "source" : "sources"}
+                            </a>
+                          )}
                         </p>
                       </div>
 
@@ -320,6 +334,12 @@ export default function AppPage() {
                     layoutOverride={currentLayout}
                     streaming={activeTab.streaming}
                   />
+
+                  {!!activeTab.response.sources?.length && (
+                    <div className="mt-12 border-t border-slate-800/80 pt-8">
+                      <SourcesList sources={activeTab.response.sources} />
+                    </div>
+                  )}
                 </div>
               ) : (
                 /* Empty state with Direct Search Bar & Suggestions */
@@ -361,8 +381,9 @@ export default function AppPage() {
                         onChange={(e) => setCanvasInput(e.target.value)}
                         placeholder="Ask anything (e.g., 'Compare Next.js vs Remix' or 'Tesla Q4 analytics')..."
                         disabled={isLoading}
-                        className="flex-1 bg-transparent px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none"
+                        className="flex-1 min-w-0 bg-transparent px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none"
                       />
+                      <WebSearchToggle compact />
                       <button
                         type="submit"
                         disabled={isLoading || !canvasInput.trim()}
