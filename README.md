@@ -8,6 +8,7 @@ Ask a question and get back a generated, interactive interface instead of a wall
 - **Multi-provider fallback.** It tries a custom OpenAI-compatible endpoint, then OpenRouter, then Gemini. A provider that's down or rejecting the key can't block the others.
 - **Schema-validated output.** Every component is checked against a Zod schema. Invalid items are dropped, numeric strings are coerced, and a malformed block is removed instead of crashing the page. Each block also renders inside its own error boundary.
 - **Follow-ups.** Recent results are sent back to the model, so "add a chart to that" works.
+- **Web search grounding.** Exa searches the web before generation (Tavily is the fallback), the answer is based on fresh results, and the real result links are shown as a Sources block. A per-query toggle chooses Auto, On or Off.
 - **Tabs and layouts.** Each query opens a tab, and you can switch a result between the five layouts. Tabs are saved locally and re-validated when loaded.
 - **Themes.** Six accent colours, applied before first paint.
 - **Showcase blocks.** Scroll- and hover-driven components built with GSAP ScrollTrigger: a parallax hero, scroll story (pinned scrollytelling), pinned horizontal gallery, stacking cards, word-by-word text reveal, count-up number ticker, expanding hover panels, spotlight/tilt cards and a marquee. All of them respect `prefers-reduced-motion`.
@@ -57,16 +58,21 @@ At least one AI provider is required.
 | `OPENROUTER_API_KEY` | OpenRouter key |
 | `GEMINI_API_KEY` | Google AI Studio key |
 | `PEXELS_API_KEY` | Optional; enables the `image_gallery` component |
+| `EXA_API_KEY` | Optional; enables web search grounding (primary provider) |
+| `TAVILY_API_KEY` | Optional; web search fallback when Exa errors, runs out of quota or returns nothing (also works on its own) |
+| `EXA_SEARCH_TYPE` | Exa search type (default `auto`; `fast` is ~0.5 s quicker) |
+| `WEB_SEARCH_NUM_RESULTS` / `WEB_SEARCH_TIMEOUT_MS` | Results per search (default 5) and per-provider timeout (default 8 s) |
 | `AI_MAX_ATTEMPTS` | Total model attempts per request (default 5) |
 | `AI_MODELS_PER_PROVIDER` | Models tried per provider before moving on (default 2) |
-| `AI_ATTEMPT_TIMEOUT_MS` / `AI_FIRST_TOKEN_TIMEOUT_MS` | Per-attempt timeouts (default 90 s / 30 s) |
+| `AI_ATTEMPT_TIMEOUT_MS` / `AI_FIRST_TOKEN_TIMEOUT_MS` | Per-attempt timeouts (default 90 s / 45 s) |
 | `CHAT_RATE_LIMIT_PER_MIN` / `IMAGES_RATE_LIMIT_PER_MIN` | Per-IP limits (default 10 / 30) |
 
 > **Rate limiting is in-memory and per server instance,** and it identifies clients by `x-real-ip` or the rightmost `x-forwarded-for` hop. Run it behind a reverse proxy (Vercel, nginx, …) so those headers can't be spoofed. That's fine for a single Node server. On serverless or multi-instance hosting, replace `src/lib/rate-limit.ts` with a shared store such as Upstash Redis.
 
 ## How generation works
 
-1. The client sends `POST /api/chat` with `{ query, history }`. History is validated, trimmed to a character budget and normalised to alternating turns.
+1. The client sends `POST /api/chat` with `{ query, history, webSearch }`. History is validated, trimmed to a character budget and normalised to alternating turns.
+1. **Web search (optional).** In `auto` mode, `needsWebSearch()` searches for time-sensitive or named-entity queries and skips how-to, coding and edit follow-ups. Providers are tried in order (Exa, then Tavily). One that reports quota or auth errors is skipped for 10 minutes, and results are cached for 15 minutes. If search fails, generation continues without it. The results go to the model inside a delimited `<web_results>` block marked as untrusted data, along with today's date. The server attaches them to the response as `sources`, so the model never produces the links shown to the user.
 2. `buildAttemptPlan()` picks models from the configured providers in priority order.
 3. The provider's token stream is fed into `ComponentStreamScanner`. Each completed component is validated and sent to the client as an NDJSON `component` event.
 4. When the stream ends, the full document is parsed and validated (`validateResponse`), and a `done` event carries the final response. If the document as a whole is broken but valid components already streamed in, those components are kept.
@@ -120,6 +126,7 @@ src/
     flow-layout.ts           Layered graph layout for flow diagrams
     geo.ts                   Country centroids + continent outlines for maps
     rate-limit.ts            In-memory per-IP limiter
+    web-search.ts            Exa → Tavily search, auto-mode heuristic, prompt grounding
 ```
 
 ## License

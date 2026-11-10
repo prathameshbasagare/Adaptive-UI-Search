@@ -6,6 +6,7 @@ import { useRef, useEffect, useState, FormEvent } from "react";
 import { X, Send, Loader2, Trash2, Sparkles, Square } from "lucide-react";
 import { useChatStore } from "@/hooks/useChatStore";
 import ChatMessage from "./ChatMessage";
+import WebSearchToggle from "./WebSearchToggle";
 
 export default function ChatPanel() {
   const messages = useChatStore((s) => s.messages);
@@ -210,9 +211,10 @@ export default function ChatPanel() {
               </button>
             )}
           </div>
-          <p className="text-xs text-slate-600 mt-1.5 text-center">
-            Shift+Enter for new line
-          </p>
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <WebSearchToggle />
+            <p className="text-xs text-slate-600">Shift+Enter for new line</p>
+          </div>
         </form>
       </aside>
     </>

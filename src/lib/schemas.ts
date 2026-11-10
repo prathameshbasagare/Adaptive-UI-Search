@@ -527,11 +527,32 @@ export type ComponentOf<K extends ComponentType> = Extract<ComponentDef, { type:
 export const LAYOUT_STYLES = ["bento", "dashboard", "docs", "split", "standard"] as const;
 export type LayoutStyle = (typeof LAYOUT_STYLES)[number];
 
+/** A web search result attached to a response by the server (never by the model). */
+export const WebSourceSchema = z.object({
+  title: z.string().min(1).max(200),
+  // Only http(s) links may ever be rendered as anchors (blocks javascript:, data: …).
+  url: z.string().url().refine((u) => /^https?:\/\//i.test(u), "http(s) only").max(2000),
+  domain: z.string().min(1).max(200),
+  publishedDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().catch(undefined),
+  snippet: z.string().max(1200).catch(""),
+});
+export type WebSource = z.output<typeof WebSourceSchema>;
+
+export function parseWebSources(raw: unknown): WebSource[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.flatMap((r) => {
+    const p = WebSourceSchema.safeParse(r);
+    return p.success ? [p.data] : [];
+  });
+}
+
 export interface AdaptiveUIResponse {
   tabTitle: string;
   summary?: string;
   layoutStyle: LayoutStyle;
   components: ComponentDef[];
+  /** Web results the answer was grounded on, attached server-side. */
+  sources?: WebSource[];
 }
 
 export function isComponentType(t: unknown): t is ComponentType {

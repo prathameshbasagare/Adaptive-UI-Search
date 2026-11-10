@@ -33,6 +33,7 @@ import type {
 } from "./schemas";
 
 export type {
+  WebSource,
   ComponentDef,
   ComponentType,
   ComponentOf,
@@ -74,6 +75,7 @@ export interface HistoryTurn {
 /** NDJSON events streamed from /api/chat. */
 export type StreamEvent =
   | { type: "status"; message: string }
+  | { type: "sources"; sources: import("./schemas").WebSource[] }
   | { type: "reset" }
   | { type: "component"; index: number; component: import("./schemas").ComponentDef }
   | { type: "meta"; tabTitle?: string; summary?: string; layoutStyle?: LayoutStyle }
@@ -105,7 +107,11 @@ export interface TabEntry {
   streaming?: boolean;
 }
 
+export type WebSearchMode = "auto" | "on" | "off";
+
 export interface ChatStore {
+  webSearchMode: WebSearchMode;
+  setWebSearchMode: (m: WebSearchMode) => void;
   messages: ChatMessage[];
   tabs: TabEntry[];
   activeTabId: string | null;

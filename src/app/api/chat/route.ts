@@ -4,7 +4,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { generateAdaptiveUIStream, GenerationError } from "@/lib/ai-provider";
 import { checkRateLimit, clientKey, envInt } from "@/lib/rate-limit";
-import type { HistoryTurn, StreamEvent } from "@/lib/types";
+import { buildSearchQuery, buildUserPrompt, isWebSearchConfigured, searchWeb, shouldSearch } from "@/lib/web-search";
+import type { HistoryTurn, StreamEvent, WebSource } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -26,6 +27,7 @@ const BodySchema = z.object({
     .max(50)
     .optional()
     .default([]),
+  webSearch: z.enum(["auto", "on", "off"]).optional().default("auto"),
 });
 
 /**
@@ -90,7 +92,27 @@ export async function POST(request: NextRequest) {
         }
       };
       try {
-        const response = await generateAdaptiveUIStream(body.query, history, emit, request.signal);
+        // 1. Optional web grounding — best effort: on failure, answer without it.
+        let sources: WebSource[] = [];
+        const isFollowUp = history.length > 0;
+        if (body.webSearch === "on" && !isWebSearchConfigured()) {
+          emit({ type: "status", message: "Web search isn't configured on this server — answering from model knowledge…" });
+        } else if (shouldSearch(body.webSearch, body.query, isFollowUp)) {
+          emit({ type: "status", message: "Searching the web…" });
+          try {
+            sources = await searchWeb(buildSearchQuery(body.query, history), request.signal);
+            if (sources.length) emit({ type: "sources", sources });
+          } catch (err) {
+            if (request.signal.aborted) throw new GenerationError("Request cancelled", 499);
+            console.warn("[/api/chat] web search failed, continuing without it:", (err as Error).message);
+            emit({ type: "status", message: "Web search unavailable — answering from model knowledge…" });
+          }
+        }
+
+        // 2. Generate. The prompt carries today's date and any web results.
+        const prompt = buildUserPrompt(body.query, sources);
+        const response = await generateAdaptiveUIStream(prompt, history, emit, request.signal);
+        if (sources.length) response.sources = sources;
         emit({ type: "done", response });
       } catch (err) {
         if (err instanceof GenerationError) {
