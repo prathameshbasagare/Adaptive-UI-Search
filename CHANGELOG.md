@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — web search grounding
+- Answers can be based on fresh web results: Exa is the primary provider and Tavily the fallback, with a 10-minute circuit breaker for providers reporting quota or auth errors and a 15-minute result cache. Search is best effort, so generation continues if it fails.
+- Auto / On / Off web search toggle in both inputs, saved per browser. Auto mode searches time-sensitive and named-entity queries and skips how-to, coding and edit follow-ups.
+- Sources block and a "Based on N web sources" link. Links come from the server's search results, never from the model, and only `http(s)` URLs are allowed.
+- Today's date is sent with every request; web content goes to the model fenced and labelled as untrusted data.
+
+### Changed
+- Default first-token timeout raised from 30 s to 45 s; the `auto` gateway sometimes takes over 30 s to start streaming.
+
 ### Added — interactive showcase blocks
 - Nine scroll- and hover-driven components (GSAP 3.15 + ScrollTrigger): `parallax_hero`, `scroll_story`, `horizontal_scroll`, `stacking_cards`, `text_reveal`, `number_ticker`, `hover_panels`, `spotlight_cards`, `marquee`. All are schema-validated, code-split, keyboard-accessible where interactive, and respect `prefers-reduced-motion`.
 - Prompt guidance on when to use each showcase block; the hero always renders first, and showcase blocks span the full width in every layout.
