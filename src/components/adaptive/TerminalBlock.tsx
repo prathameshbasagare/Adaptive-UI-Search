@@ -16,8 +16,6 @@ function useTypewriter(text: string, speed = 30, active = false) {
 
   useEffect(() => {
     if (!active) return;
-    setDisplayed("");
-    setDone(false);
     let i = 0;
     const interval = setInterval(() => {
       setDisplayed(text.slice(0, i + 1));

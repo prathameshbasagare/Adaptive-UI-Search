@@ -2,7 +2,9 @@
 
 "use client";
 
+import { useId, useMemo } from "react";
 import type { FlowNode, FlowEdge } from "@/lib/types";
+import { layoutFlow, LINE_HEIGHT, type LaidOutNode } from "@/lib/flow-layout";
 
 interface FlowDiagramProps {
   flowTitle?: string;
@@ -10,141 +12,116 @@ interface FlowDiagramProps {
   edges: FlowEdge[];
 }
 
-const NODE_W = 120;
-const NODE_H = 44;
-const DIAMOND_H = 52;
-
-function getCenter(node: FlowNode): [number, number] {
-  const h = node.shape === "diamond" ? DIAMOND_H : NODE_H;
-  return [node.x + NODE_W / 2, node.y + h / 2];
-}
-
-function NodeShape({ node }: { node: FlowNode }) {
-  const cx = node.x;
-  const cy = node.y;
-
-  if (node.shape === "diamond") {
-    const hw = NODE_W / 2;
-    const hh = DIAMOND_H / 2;
-    const mx = cx + hw;
-    const my = cy + hh;
-    return (
-      <>
-        <polygon
-          points={`${mx},${cy} ${cx + NODE_W},${my} ${mx},${cy + DIAMOND_H} ${cx},${my}`}
-          fill="var(--theme-500-10)"
-          stroke="var(--theme-500-60)"
-          strokeWidth="1.5"
-        />
-        <text x={mx} y={my + 4} textAnchor="middle" fill="#e2e8f0" fontSize="11" fontFamily="system-ui">
-          {node.label}
-        </text>
-      </>
-    );
-  }
-
-  if (node.shape === "circle") {
-    const r = NODE_H / 2;
-    return (
-      <>
-        <circle
-          cx={cx + NODE_W / 2}
-          cy={cy + r}
-          r={r}
-          fill="var(--theme-500-20)"
-          stroke="var(--theme-500)"
-          strokeWidth="1.5"
-        />
-        <text x={cx + NODE_W / 2} y={cy + r + 4} textAnchor="middle" fill="#e2e8f0" fontSize="11" fontFamily="system-ui">
-          {node.label}
-        </text>
-      </>
-    );
-  }
-
-  // rect (default)
+function NodeLabel({ node }: { node: LaidOutNode }) {
+  const cx = node.x + node.w / 2;
+  const cy = node.y + node.h / 2;
+  const top = cy - ((node.lines.length - 1) * LINE_HEIGHT) / 2;
   return (
-    <>
-      <rect
-        x={cx}
-        y={cy}
-        width={NODE_W}
-        height={NODE_H}
-        rx="8"
-        fill="var(--theme-500-10)"
-        stroke="var(--theme-500-40)"
-        strokeWidth="1.5"
-      />
-      <text x={cx + NODE_W / 2} y={cy + NODE_H / 2 + 4} textAnchor="middle" fill="#e2e8f0" fontSize="11" fontFamily="system-ui">
-        {node.label}
-      </text>
-    </>
+    <text textAnchor="middle" fill="#e2e8f0" fontSize="11" fontFamily="system-ui, sans-serif">
+      <title>{node.label}</title>
+      {node.lines.map((line, i) => (
+        <tspan key={i} x={cx} y={top + i * LINE_HEIGHT} dominantBaseline="middle">
+          {line}
+        </tspan>
+      ))}
+    </text>
   );
 }
 
-function EdgePath({ edge, nodes }: { edge: FlowEdge; nodes: FlowNode[] }) {
-  const fromNode = nodes.find((n) => n.id === edge.from);
-  const toNode = nodes.find((n) => n.id === edge.to);
-  if (!fromNode || !toNode) return null;
-
-  const [x1, y1] = getCenter(fromNode);
-  const [x2, y2] = getCenter(toNode);
-
-  // Simple straight line with mid-point curve
-  const mx = (x1 + x2) / 2;
-  const my = (y1 + y2) / 2;
-
-  return (
-    <>
-      <path
-        d={`M${x1},${y1} Q${mx},${y1} ${x2},${y2}`}
-        className="flow-edge"
+function NodeShape({ node }: { node: LaidOutNode }) {
+  const { x, y, w, h } = node;
+  let shape: React.ReactNode;
+  if (node.shape === "diamond") {
+    const mx = x + w / 2;
+    const my = y + h / 2;
+    shape = (
+      <polygon
+        points={`${mx},${y} ${x + w},${my} ${mx},${y + h} ${x},${my}`}
+        fill="var(--theme-500-10)"
+        stroke="var(--theme-500-60)"
+        strokeWidth="1.5"
       />
-      {edge.label && (
-        <text x={(mx + x1) / 2} y={(y1 + my) / 2 - 6} textAnchor="middle" fill="#64748b" fontSize="10" fontFamily="system-ui">
-          {edge.label}
-        </text>
-      )}
-    </>
+    );
+  } else if (node.shape === "circle") {
+    // Terminal node: rendered as a stadium so any label length fits.
+    shape = (
+      <rect x={x} y={y} width={w} height={h} rx={h / 2} fill="var(--theme-500-20)" stroke="var(--theme-500)" strokeWidth="1.5" />
+    );
+  } else {
+    shape = <rect x={x} y={y} width={w} height={h} rx="8" fill="var(--theme-500-10)" stroke="var(--theme-500-40)" strokeWidth="1.5" />;
+  }
+  return (
+    <g>
+      {shape}
+      <NodeLabel node={node} />
+    </g>
   );
 }
 
 export default function FlowDiagram({ flowTitle, nodes, edges }: FlowDiagramProps) {
-  if (!nodes.length) return null;
+  // useId may contain characters that are awkward inside url(#…); keep it alphanumeric.
+  const markerId = `arrow-${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
+  const layout = useMemo(() => layoutFlow(nodes, edges), [nodes, edges]);
 
-  const maxX = Math.max(...nodes.map((n) => n.x + NODE_W)) + 20;
-  const maxY = Math.max(...nodes.map((n) => n.y + (n.shape === "diamond" ? DIAMOND_H : NODE_H))) + 20;
+  if (!layout.nodes.length) return null;
 
   return (
-    <div className="bg-slate-900/60 border border-slate-700 rounded-xl overflow-hidden">
+    <figure className="bg-slate-900/60 border border-slate-700 rounded-xl overflow-hidden">
       {flowTitle && (
-        <div
+        <figcaption
           className="px-5 py-3 border-b border-slate-700 font-semibold text-white text-sm"
           style={{ background: "linear-gradient(to right, var(--theme-500-10), transparent)" }}
         >
           {flowTitle}
-        </div>
+        </figcaption>
       )}
       <div className="overflow-x-auto p-4">
         <svg
-          width={maxX}
-          height={maxY}
-          viewBox={`0 0 ${maxX} ${maxY}`}
-          style={{ maxWidth: "100%", height: "auto" }}
+          role="img"
+          aria-label={flowTitle ?? "Flow diagram"}
+          viewBox={`0 0 ${layout.width} ${layout.height}`}
+          width={layout.width}
+          className="block mx-auto h-auto max-w-full"
+          style={{ minWidth: Math.min(layout.width, 320) }}
         >
           <defs>
-            <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-              <polygon points="0 0, 10 3.5, 0 7" fill="var(--theme-500-60)" />
+            <marker id={markerId} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--theme-500-60)" />
             </marker>
           </defs>
-          {edges.map((edge, i) => (
-            <EdgePath key={i} edge={edge} nodes={nodes} />
+
+          {layout.edges.map((e) => (
+            <path
+              key={e.key}
+              d={e.path}
+              fill="none"
+              stroke="var(--theme-500-60)"
+              strokeWidth="1.5"
+              strokeDasharray={e.back ? "4 3" : undefined}
+              markerEnd={`url(#${markerId})`}
+            />
           ))}
-          {nodes.map((node) => (
+
+          {layout.nodes.map((node) => (
             <NodeShape key={node.id} node={node} />
           ))}
+
+          {/* Edge labels last so they sit above lines and nodes. */}
+          {layout.edges
+            .filter((e) => e.label)
+            .map((e) => {
+              const w = Math.min(120, (e.label as string).length * 6 + 10);
+              return (
+                <g key={`l-${e.key}`}>
+                  <rect x={e.labelX - w / 2} y={e.labelY - 8} width={w} height={16} rx="4" fill="#0f172a" stroke="#334155" />
+                  <text x={e.labelX} y={e.labelY} dominantBaseline="middle" textAnchor="middle" fill="#94a3b8" fontSize="10" fontFamily="system-ui, sans-serif">
+                    {e.label}
+                  </text>
+                </g>
+              );
+            })}
         </svg>
       </div>
-    </div>
+    </figure>
   );
 }

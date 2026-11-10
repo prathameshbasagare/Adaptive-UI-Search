@@ -2,6 +2,7 @@
 
 "use client";
 
+import { pressable } from "@/lib/a11y";
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, RotateCcw } from "lucide-react";
 import type { Flashcard } from "@/lib/types";
@@ -43,8 +44,8 @@ export default function FlashcardDeck({ flashcardTitle, flashcards }: FlashcardD
         style={{ height: "200px" }}
       >
         <div
-          className={`flashcard-card w-full h-full cursor-pointer select-none ${flipped ? "flipped" : ""}`}
-          onClick={() => setFlipped((f) => !f)}
+          className={`flashcard-card w-full h-full cursor-pointer select-none rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-slate-400 ${flipped ? "flipped" : ""}`}
+          {...pressable(() => setFlipped((f) => !f), flipped ? `Answer: ${card.back}. Press to show question` : `Question: ${card.front}. Press to reveal answer`)}
         >
           {/* Front */}
           <div
@@ -71,6 +72,7 @@ export default function FlashcardDeck({ flashcardTitle, flashcards }: FlashcardD
       <div className="flex items-center justify-center gap-3">
         <button
           onClick={() => go(-1)}
+          aria-label="Previous card"
           disabled={index === 0}
           className="p-2 rounded-lg border border-slate-700 text-slate-400 hover:text-white hover:border-slate-600 disabled:opacity-30 disabled:pointer-events-none transition-colors"
         >
@@ -84,6 +86,7 @@ export default function FlashcardDeck({ flashcardTitle, flashcards }: FlashcardD
         </button>
         <button
           onClick={() => go(1)}
+          aria-label="Next card"
           disabled={index === flashcards.length - 1}
           className="p-2 rounded-lg border border-slate-700 text-slate-400 hover:text-white hover:border-slate-600 disabled:opacity-30 disabled:pointer-events-none transition-colors"
         >

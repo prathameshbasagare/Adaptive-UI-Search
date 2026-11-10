@@ -2,6 +2,7 @@
 
 "use client";
 
+import { pressable } from "@/lib/a11y";
 import { ExternalLink } from "lucide-react";
 import type { CardItem } from "@/lib/types";
 import { useModal } from "@/contexts/ModalContext";
@@ -20,16 +21,15 @@ export default function CardGrid({ cards }: CardGridProps) {
         <div
           key={index}
           className={`group relative bg-slate-800/60 border border-slate-700 rounded-xl overflow-hidden transition-all duration-200 hover:bg-slate-800 hover:shadow-lg ${
-            card.details ? "cursor-pointer" : ""
+            card.details ? "cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-slate-400" : ""
           }`}
           style={{
             borderTopColor: "transparent",
           }}
-          onClick={
-            card.details
-              ? () => openModal(card.title, <TextBlock content={card.details!} />)
-              : undefined
-          }
+          {...pressable(
+            card.details ? () => openModal(card.title, <TextBlock content={card.details!} />) : undefined,
+            card.details ? `${card.title} — show details` : undefined
+          )}
         >
           {/* Top gradient accent using theme color */}
           <div

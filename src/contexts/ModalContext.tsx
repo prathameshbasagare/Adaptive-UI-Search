@@ -2,7 +2,7 @@
 
 "use client";
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, useId, useMemo, useRef, type ReactNode } from "react";
 
 interface ModalState {
   title: string;
@@ -38,8 +38,10 @@ export function ModalProvider({ children }: ModalProviderProps) {
     setModal(null);
   }, []);
 
+  const value = useMemo(() => ({ openModal, closeModal }), [openModal, closeModal]);
+
   return (
-    <ModalContext.Provider value={{ openModal, closeModal }}>
+    <ModalContext.Provider value={value}>
       {children}
       {modal && <ModalOverlay title={modal.title} body={modal.body} onClose={closeModal} />}
     </ModalContext.Provider>
@@ -47,46 +49,77 @@ export function ModalProvider({ children }: ModalProviderProps) {
 }
 
 function ModalOverlay({ title, body, onClose }: { title: string; body: ReactNode; onClose: () => void }) {
-  // Close on Escape key
-  const handleKey = useCallback(
-    (e: React.KeyboardEvent) => { if (e.key === "Escape") onClose(); },
-    [onClose]
-  );
+  const panelRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+
+  useEffect(() => {
+    // Move focus into the dialog, restore it on close, lock page scroll,
+    // close on Escape and keep Tab focus trapped inside the panel.
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    panelRef.current?.focus();
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        onClose();
+        return;
+      }
+      if (e.key !== "Tab" || !panelRef.current) return;
+      const focusables = panelRef.current.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (e.shiftKey && (document.activeElement === first || document.activeElement === panelRef.current)) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => {
+      window.removeEventListener("keydown", onKey, true);
+      document.body.style.overflow = prevOverflow;
+      previouslyFocused?.focus?.();
+    };
+  }, [onClose]);
 
   return (
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-      onKeyDown={handleKey}
-      // eslint-disable-next-line jsx-a11y/no-autofocus
-      tabIndex={-1}
-    >
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
 
       {/* Panel */}
       <div
-        className="relative z-10 w-full max-w-2xl max-h-[85vh] bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl flex flex-col animate-fadeIn"
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        className="relative z-10 w-full max-w-2xl max-h-[85vh] bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl flex flex-col animate-fadeIn outline-none"
         style={{ boxShadow: "0 25px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05)" }}
       >
-        {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 shrink-0">
-          <h2 className="font-semibold text-white text-base">{title}</h2>
+          <h2 id={titleId} className="font-semibold text-white text-base">
+            {title}
+          </h2>
           <button
+            type="button"
             onClick={onClose}
             className="text-slate-500 hover:text-slate-200 transition-colors w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-800"
             aria-label="Close"
           >
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+              <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
           </button>
         </div>
-
-        {/* Body */}
-        <div className="overflow-y-auto px-6 py-5 flex-1 scrollbar-thin">
-          {body}
-        </div>
+        <div className="overflow-y-auto px-6 py-5 flex-1 scrollbar-thin">{body}</div>
       </div>
     </div>
   );

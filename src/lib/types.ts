@@ -1,324 +1,84 @@
 // File: ./src/lib/types.ts
+//
+// Component/data types are derived from the Zod schemas in ./schemas.ts so the
+// runtime validation and the TypeScript types can never drift apart.
 
-export type ComponentType =
-  | "text"
-  | "cards"
-  | "chart"
-  | "code"
-  | "timeline"
-  | "table"
-  | "stat_cards"
-  | "progress"
-  | "accordion"
-  | "tabs_content"
-  | "quote"
-  | "steps"
-  | "comparison"
-  | "rating"
-  | "quiz"
-  | "image_gallery"
-  | "key_value"
-  | "terminal"
-  | "flashcard"
-  | "color_palette"
-  | "poll"
-  | "rating_grid"
-  | "flow_diagram"
-  | "map_highlight"
-  | "document_view";
+import type { z } from "zod";
+import type {
+  CardItemSchema,
+  BentoItemSchema,
+  ChartDataSchema,
+  ChartDatasetSchema,
+  CodeSnippetSchema,
+  TimelineEventSchema,
+  StatCardSchema,
+  ProgressItemSchema,
+  AccordionItemSchema,
+  TabContentSchema,
+  StepSchema,
+  ComparisonSideSchema,
+  RatingItemSchema,
+  QuizQuestionSchema,
+  KeyValueEntrySchema,
+  TerminalLineSchema,
+  FlashcardSchema,
+  ColorSwatchSchema,
+  PollOptionSchema,
+  RatingGridItemSchema,
+  FlowEdgeSchema,
+  FlowNodeSchema,
+  MapHighlightEntrySchema,
+  AdaptiveUIResponse,
+  LayoutStyle,
+} from "./schemas";
 
-// ── cards ────────────────────────────────────────────────────────────────────
+export type {
+  ComponentDef,
+  ComponentType,
+  ComponentOf,
+  AdaptiveUIResponse,
+  LayoutStyle,
+} from "./schemas";
 
-export interface CardItem {
-  title: string;
-  body: string;
-  badge?: string;
-  icon?: string;
-  /** Optional markdown content shown in a modal on click */
-  details?: string;
+export type CardItem = z.output<typeof CardItemSchema>;
+export type BentoItem = z.output<typeof BentoItemSchema>;
+export type ChartDataset = z.output<typeof ChartDatasetSchema>;
+export type ChartData = z.output<typeof ChartDataSchema>;
+export type CodeSnippet = z.output<typeof CodeSnippetSchema>;
+export type TimelineEvent = z.output<typeof TimelineEventSchema>;
+export type StatCard = z.output<typeof StatCardSchema>;
+export type ProgressItem = z.output<typeof ProgressItemSchema>;
+export type AccordionItem = z.output<typeof AccordionItemSchema>;
+export type TabContent = z.output<typeof TabContentSchema>;
+export type Step = z.output<typeof StepSchema>;
+export type ComparisonSide = z.output<typeof ComparisonSideSchema>;
+export type RatingItem = z.output<typeof RatingItemSchema>;
+export type QuizQuestion = z.output<typeof QuizQuestionSchema>;
+export type KeyValueEntry = z.output<typeof KeyValueEntrySchema>;
+export type TerminalLine = z.output<typeof TerminalLineSchema>;
+export type Flashcard = z.output<typeof FlashcardSchema>;
+export type ColorSwatch = z.output<typeof ColorSwatchSchema>;
+export type PollOption = z.output<typeof PollOptionSchema>;
+export type RatingGridItem = z.output<typeof RatingGridItemSchema>;
+export type FlowNode = z.output<typeof FlowNodeSchema>;
+export type FlowEdge = z.output<typeof FlowEdgeSchema>;
+export type MapHighlightEntry = z.output<typeof MapHighlightEntrySchema>;
+
+// ── Chat wire format ─────────────────────────────────────────────────────────
+
+export interface HistoryTurn {
+  role: "user" | "model";
+  text: string;
 }
 
-// ── chart ────────────────────────────────────────────────────────────────────
-
-export interface ChartDataset {
-  label: string;
-  data: number[];
-  backgroundColor?: string | string[];
-  borderColor?: string | string[];
-  // Per-dataset chart type override for mixed charts
-  type?: "bar" | "line";
-}
-
-export interface ChartData {
-  labels: string[];
-  datasets: ChartDataset[];
-}
-
-// ── code ─────────────────────────────────────────────────────────────────────
-
-export interface CodeSnippet {
-  language: string;
-  label?: string;
-  code: string;
-}
-
-// ── timeline ─────────────────────────────────────────────────────────────────
-
-export interface TimelineEvent {
-  year?: string;
-  title: string;
-  description: string;
-  icon?: string;
-}
-
-// ── stat_cards ───────────────────────────────────────────────────────────────
-
-export interface StatCard {
-  label: string;
-  value: string;
-  trend?: string;
-  trendDirection?: "up" | "down" | "neutral";
-  icon?: string;
-}
-
-// ── progress ─────────────────────────────────────────────────────────────────
-
-export interface ProgressItem {
-  label: string;
-  value: number;
-}
-
-// ── accordion ────────────────────────────────────────────────────────────────
-
-export interface AccordionItem {
-  question: string;
-  answer: string;
-}
-
-// ── tabs_content ─────────────────────────────────────────────────────────────
-
-export interface TabContent {
-  label: string;
-  content: string;
-}
-
-// ── steps ────────────────────────────────────────────────────────────────────
-
-export interface Step {
-  title: string;
-  description: string;
-  code?: string;
-  language?: string;
-}
-
-// ── comparison ───────────────────────────────────────────────────────────────
-
-export interface ComparisonSide {
-  title: string;
-  items: string[];
-  color?: "green" | "red" | "blue" | "neutral";
-}
-
-// ── rating ───────────────────────────────────────────────────────────────────
-
-export interface RatingItem {
-  label: string;
-  defaultScore: number;
-}
-
-// ── quiz ─────────────────────────────────────────────────────────────────────
-
-export interface QuizQuestion {
-  question: string;
-  options: string[];
-  correct: number;
-  explanation?: string;
-}
-
-// ── image_gallery ─────────────────────────────────────────────────────────────
-
-// image_gallery uses query + count, images fetched at runtime from Pexels
-
-// ── key_value ─────────────────────────────────────────────────────────────────
-
-export interface KeyValueEntry {
-  key: string;
-  value: string;
-  category?: string;
-}
-
-// ── terminal ─────────────────────────────────────────────────────────────────
-
-export interface TerminalLine {
-  prompt?: string;
-  command?: string;
-  output?: string;
-}
-
-// ── flashcard ────────────────────────────────────────────────────────────────
-
-export interface Flashcard {
-  front: string;
-  back: string;
-}
-
-// ── color_palette ─────────────────────────────────────────────────────────────
-
-export interface ColorSwatch {
-  name: string;
-  hex: string;
-  description?: string;
-}
-
-// ── poll ─────────────────────────────────────────────────────────────────────
-
-export interface PollOption {
-  label: string;
-  /** Seed value (0–100) shown when no one has voted yet */
-  initialPercent?: number;
-}
-
-// ── rating_grid ───────────────────────────────────────────────────────────────
-
-export interface RatingGridItem {
-  item: string;
-  scores: Record<string, number>;
-}
-
-// ── flow_diagram ──────────────────────────────────────────────────────────────
-
-export interface FlowNode {
-  id: string;
-  label: string;
-  x: number;
-  y: number;
-  shape?: "rect" | "diamond" | "circle";
-}
-
-export interface FlowEdge {
-  from: string;
-  to: string;
-  label?: string;
-}
-
-// ── map_highlight ─────────────────────────────────────────────────────────────
-
-export interface MapHighlightEntry {
-  country: string;
-  value?: string;
-}
-
-// ── ComponentDef ─────────────────────────────────────────────────────────────
-
-export interface ComponentDef {
-  type: ComponentType;
-
-  // text / document_view
-  content?: string;
-
-  // cards
-  cards?: CardItem[];
-
-  // chart
-  chartType?: "bar" | "line" | "pie" | "doughnut";
-  chartData?: ChartData;
-  chartTitle?: string;
-
-  // code — single snippet (legacy) or multi-snippet tabs
-  language?: string;
-  code?: string;
-  codeTitle?: string;
-  snippets?: CodeSnippet[];
-
-  // timeline
-  events?: TimelineEvent[];
-
-  // table
-  tableHeaders?: string[];
-  tableRows?: string[][];
-
-  // stat_cards
-  stats?: StatCard[];
-
-  // progress
-  progressTitle?: string;
-  items?: ProgressItem[];
-
-  // accordion
-  accordionItems?: AccordionItem[];
-
-  // tabs_content
-  tabs?: TabContent[];
-
-  // quote
-  quoteType?: "tip" | "warning" | "info" | "success" | "quote";
-  author?: string;
-
-  // steps
-  steps?: Step[];
-
-  // comparison
-  leftSide?: ComparisonSide;
-  rightSide?: ComparisonSide;
-
-  // rating
-  ratingTitle?: string;
-  ratingItems?: RatingItem[];
-
-  // quiz
-  questions?: QuizQuestion[];
-
-  // image_gallery
-  query?: string;
-  count?: number;
-  caption?: string;
-
-  // key_value
-  kvTitle?: string;
-  entries?: KeyValueEntry[];
-
-  // terminal
-  terminalTitle?: string;
-  lines?: TerminalLine[];
-
-  // flashcard
-  flashcardTitle?: string;
-  flashcards?: Flashcard[];
-
-  // color_palette
-  paletteTitle?: string;
-  swatches?: ColorSwatch[];
-
-  // poll
-  pollQuestion?: string;
-  options?: PollOption[];
-
-  // rating_grid
-  gridTitle?: string;
-  criteria?: string[];
-  gridItems?: RatingGridItem[];
-
-  // flow_diagram
-  flowTitle?: string;
-  nodes?: FlowNode[];
-  edges?: FlowEdge[];
-
-  // map_highlight
-  mapTitle?: string;
-  highlights?: MapHighlightEntry[];
-
-  // document_view — cover fields
-  docTitle?: string;
-  docSubtitle?: string;
-}
-
-// ── top-level response ────────────────────────────────────────────────────────
-
-export interface AdaptiveUIResponse {
-  tabTitle: string;
-  summary?: string;
-  components: ComponentDef[];
-}
+/** NDJSON events streamed from /api/chat. */
+export type StreamEvent =
+  | { type: "status"; message: string }
+  | { type: "reset" }
+  | { type: "component"; index: number; component: import("./schemas").ComponentDef }
+  | { type: "meta"; tabTitle?: string; summary?: string; layoutStyle?: LayoutStyle }
+  | { type: "done"; response: AdaptiveUIResponse }
+  | { type: "error"; error: string; status: number };
 
 // ── store types ───────────────────────────────────────────────────────────────
 
@@ -329,15 +89,20 @@ export interface ChatMessage {
   role: MessageRole;
   content: string;
   timestamp: number;
-  adaptiveResponse?: AdaptiveUIResponse;
+  /** Tab that holds this assistant message's generated UI (if any). */
+  tabId?: string;
+  isError?: boolean;
 }
 
 export interface TabEntry {
   id: string;
   title: string;
   query: string;
+  layoutStyle?: LayoutStyle;
   response: AdaptiveUIResponse;
   createdAt: number;
+  /** True while the response is still streaming in. Never persisted. */
+  streaming?: boolean;
 }
 
 export interface ChatStore {
@@ -346,10 +111,13 @@ export interface ChatStore {
   activeTabId: string | null;
   isChatOpen: boolean;
   isLoading: boolean;
-  addMessage: (msg: Omit<ChatMessage, "id" | "timestamp">) => void;
-  addTab: (tab: Omit<TabEntry, "id" | "createdAt">) => void;
+  statusMessage: string | null;
+  sendQuery: (query: string) => Promise<void>;
+  cancelQuery: () => void;
+  closeTab: (id: string) => void;
+  closeAllTabs: () => void;
+  updateTabLayout: (tabId: string, layout: LayoutStyle) => void;
   setActiveTab: (id: string) => void;
   toggleChat: () => void;
-  setLoading: (v: boolean) => void;
   clearMessages: () => void;
 }
